@@ -18,28 +18,31 @@ pub fn set_clipboard_text(text: &str) -> Result<(), String> {
     clipboard.set_text(text.to_string()).map_err(|e| format!("Clipboard set text error: {}", e))
 }
 
+#[cfg(target_os = "windows")]
+const KEY_COPY: Key = Key::C;
+#[cfg(target_os = "windows")]
+const KEY_PASTE: Key = Key::V;
+
+#[cfg(not(target_os = "windows"))]
+const KEY_COPY: Key = Key::Unicode('c');
+#[cfg(not(target_os = "windows"))]
+const KEY_PASTE: Key = Key::Unicode('v');
+
 pub fn simulate_copy() -> Result<String, String> {
     // Attempt to copy current selection to clipboard
     let mut enigo = Enigo::new(&Settings::default())
         .map_err(|e| format!("Enigo init error: {:?}", e))?;
 
     #[cfg(target_os = "macos")]
-    {
-        let _ = enigo.key(Key::Meta, Direction::Press);
-        thread::sleep(Duration::from_millis(15));
-        let _ = enigo.key(Key::C, Direction::Click);
-        thread::sleep(Duration::from_millis(15));
-        let _ = enigo.key(Key::Meta, Direction::Release);
-    }
-
+    let modifier = Key::Meta;
     #[cfg(not(target_os = "macos"))]
-    {
-        let _ = enigo.key(Key::Control, Direction::Press);
-        thread::sleep(Duration::from_millis(15));
-        let _ = enigo.key(Key::C, Direction::Click);
-        thread::sleep(Duration::from_millis(15));
-        let _ = enigo.key(Key::Control, Direction::Release);
-    }
+    let modifier = Key::Control;
+
+    let _ = enigo.key(modifier, Direction::Press);
+    thread::sleep(Duration::from_millis(15));
+    let _ = enigo.key(KEY_COPY, Direction::Click);
+    thread::sleep(Duration::from_millis(15));
+    let _ = enigo.key(modifier, Direction::Release);
 
     // Wait a brief moment for OS clipboard buffer to settle
     thread::sleep(Duration::from_millis(40));
@@ -58,22 +61,15 @@ pub fn simulate_paste(text: &str) -> Result<(), String> {
         .map_err(|e| format!("Enigo init error: {:?}", e))?;
 
     #[cfg(target_os = "macos")]
-    {
-        let _ = enigo.key(Key::Meta, Direction::Press);
-        thread::sleep(Duration::from_millis(15));
-        let _ = enigo.key(Key::V, Direction::Click);
-        thread::sleep(Duration::from_millis(15));
-        let _ = enigo.key(Key::Meta, Direction::Release);
-    }
-
+    let modifier = Key::Meta;
     #[cfg(not(target_os = "macos"))]
-    {
-        let _ = enigo.key(Key::Control, Direction::Press);
-        thread::sleep(Duration::from_millis(15));
-        let _ = enigo.key(Key::V, Direction::Click);
-        thread::sleep(Duration::from_millis(15));
-        let _ = enigo.key(Key::Control, Direction::Release);
-    }
+    let modifier = Key::Control;
+
+    let _ = enigo.key(modifier, Direction::Press);
+    thread::sleep(Duration::from_millis(15));
+    let _ = enigo.key(KEY_PASTE, Direction::Click);
+    thread::sleep(Duration::from_millis(15));
+    let _ = enigo.key(modifier, Direction::Release);
 
     Ok(())
 }
