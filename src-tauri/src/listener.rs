@@ -1,0 +1,154 @@
+use crate::clipboard::get_clipboard_text;
+use crate::models::{AppSettings, TriggerEventPayload};
+use rdev::{listen, Button, Event, EventType};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::{Duration, Instant};
+use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, Position};
+
+pub struct ListenerState {
+    pub enabled: AtomicBool,
+    pub settings: Arc<Mutex<AppSettings>>,
+}
+
+pub fn start_global_listener(app: AppHandle, settings: Arc<Mutex<AppSettings>>) {
+    let state = Arc::new(ListenerState {
+        enabled: AtomicBool::new(true),
+        settings: settings.clone(),
+    });
+
+    let mouse_pos = Arc::new(Mutex::new((0.0f64, 0.0f64)));
+    let mouse_down_pos = Arc::new(Mutex::new((0.0f64, 0.0f64)));
+    let last_typing_time = Arc::new(Mutex::new(None::<Instant>));
+    let pause_triggered = Arc::new(AtomicBool::new(false));
+
+    // Spawn typing pause monitor thread
+    {
+        let app = app.clone();
+        let state = state.clone();
+        let mouse_pos = mouse_pos.clone();
+        let last_typing_time = last_typing_time.clone();
+        let pause_triggered = pause_triggered.clone();
+
+        thread::spawn(move || loop {
+            thread::sleep(Duration::from_millis(200));
+
+            if !state.enabled.load(Ordering::Relaxed) {
+                continue;
+            }
+
+            let (auto_pause, pause_ms) = {
+                let s = state.settings.lock().unwrap();
+                (s.auto_trigger_pause, s.pause_delay_ms)
+            };
+
+            if !auto_pause {
+                continue;
+            }
+
+            let should_trigger = {
+                let typing_opt = last_typing_time.lock().unwrap();
+                if let Some(t) = *typing_opt {
+                    if t.elapsed() >= Duration::from_millis(pause_ms)
+                        && !pause_triggered.load(Ordering::Relaxed)
+                    {
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            };
+
+            if should_trigger {
+                pause_triggered.store(true, Ordering::Relaxed);
+                let (x, y) = *mouse_pos.lock().unwrap();
+                show_widget_at(&app, x, y, "pause", String::new());
+            }
+        });
+    }
+
+    // Spawn rdev event listener thread
+    thread::spawn(move || {
+        let callback = move |event: Event| {
+            if !state.enabled.load(Ordering::Relaxed) {
+                return;
+            }
+
+            match event.event_type {
+                EventType::MouseMove { x, y } => {
+                    let mut pos = mouse_pos.lock().unwrap();
+                    *pos = (x, y);
+                }
+                EventType::ButtonPress(Button::Left) => {
+                    let (x, y) = *mouse_pos.lock().unwrap();
+                    let mut down = mouse_down_pos.lock().unwrap();
+                    *down = (x, y);
+                }
+                EventType::ButtonRelease(Button::Left) => {
+                    let auto_selection = {
+                        state.settings.lock().unwrap().auto_trigger_selection
+                    };
+
+                    if !auto_selection {
+                        return;
+                    }
+
+                    let (cur_x, cur_y) = *mouse_pos.lock().unwrap();
+                    let (down_x, down_y) = *mouse_down_pos.lock().unwrap();
+                    let dx = cur_x - down_x;
+                    let dy = cur_y - down_y;
+                    let distance_sq = dx * dx + dy * dy;
+
+                    // Only trigger if mouse was dragged (selection motion)
+                    if distance_sq > 40.0 {
+                        let app_clone = app.clone();
+                        thread::spawn(move || {
+                            // Brief wait before reading selection
+                            thread::sleep(Duration::from_millis(150));
+                            let selected_text = get_clipboard_text().unwrap_or_default();
+                            show_widget_at(&app_clone, cur_x, cur_y, "selection", selected_text);
+                        });
+                    }
+                }
+                EventType::KeyPress(_) => {
+                    let mut t = last_typing_time.lock().unwrap();
+                    *t = Some(Instant::now());
+                    pause_triggered.store(false, Ordering::Relaxed);
+                }
+                _ => {}
+            }
+        };
+
+        if let Err(err) = listen(callback) {
+            eprintln!("rdev listener error: {:?}", err);
+        }
+    });
+}
+
+pub fn show_widget_at(app: &AppHandle, x: f64, y: f64, trigger_type: &str, text: String) {
+    if let Some(window) = app.get_webview_window("floating") {
+        // Position window slightly below and to the right of the cursor
+        let target_x = (x as i32 + 12).max(10);
+        let target_y = (y as i32 + 16).max(10);
+
+        let _ = window.set_position(Position::Physical(PhysicalPosition {
+            x: target_x,
+            y: target_y,
+        }));
+
+        let _ = window.emit(
+            "trigger-pill",
+            TriggerEventPayload {
+                text,
+                x,
+                y,
+                trigger_type: trigger_type.to_string(),
+            },
+        );
+
+        let _ = window.show();
+    }
+}
