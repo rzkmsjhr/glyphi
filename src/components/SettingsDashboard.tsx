@@ -25,6 +25,9 @@ export const SettingsDashboard: React.FC = () => {
   const loadSettings = async () => {
     try {
       const data = await invoke<AppSettings>("get_settings");
+      if (data.gemini_model === "gemini-2.0-flash" || !data.gemini_model) {
+        data.gemini_model = "gemini-3.8-flash";
+      }
       setSettings(data);
     } catch (err) {
       console.error("Failed to load settings:", err);
@@ -182,7 +185,10 @@ export const SettingsDashboard: React.FC = () => {
                       setSettings({ ...settings, gemini_model: e.target.value })
                     }
                   >
-                    <option value="gemini-2.0-flash">gemini-2.0-flash (Fast & recommended)</option>
+                    <option value="gemini-3.8-flash">gemini-3.8-flash (Fast, free tier & recommended)</option>
+                    <option value="gemini-3.5-flash">gemini-3.5-flash (Balanced)</option>
+                    <option value="gemini-3.0-flash">gemini-3.0-flash</option>
+                    <option value="gemini-2.5-flash">gemini-2.5-flash</option>
                     <option value="gemini-1.5-flash">gemini-1.5-flash</option>
                     <option value="gemini-1.5-pro">gemini-1.5-pro (High capability)</option>
                   </select>

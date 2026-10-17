@@ -1,30 +1,30 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" fill="none">
   <defs>
     <!-- Background Gradients -->
-    <radialGradient id="bgGlow" cx="50%" cy="45%" r="65%">
-      <stop offset="0%" stop-color="#232733" />
-      <stop offset="60%" stop-color="#12141a" />
-      <stop offset="100%" stop-color="#090a0d" />
+    <radialGradient id="bgGlow" cx="50%" cy="40%" r="70%">
+      <stop offset="0%" stop-color="#262b3a" />
+      <stop offset="55%" stop-color="#14161f" />
+      <stop offset="100%" stop-color="#0a0b10" />
     </radialGradient>
 
-    <radialGradient id="ambientAmber" cx="52%" cy="50%" r="55%">
-      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.22" />
-      <stop offset="50%" stop-color="#d97706" stop-opacity="0.08" />
+    <radialGradient id="ambientAmber" cx="52%" cy="48%" r="60%">
+      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.28" />
+      <stop offset="45%" stop-color="#d97706" stop-opacity="0.12" />
       <stop offset="100%" stop-color="#f59e0b" stop-opacity="0" />
     </radialGradient>
 
     <!-- Outer Rim Stroke -->
     <linearGradient id="rimStroke" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.22" />
-      <stop offset="50%" stop-color="#3d4457" stop-opacity="0.4" />
-      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0.35" />
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.3" />
+      <stop offset="40%" stop-color="#4f5873" stop-opacity="0.5" />
+      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0.45" />
     </linearGradient>
 
     <!-- Letter G Main Gradient -->
-    <linearGradient id="gMainGrad" x1="20%" y1="15%" x2="90%" y2="95%">
+    <linearGradient id="gMainGrad" x1="15%" y1="10%" x2="85%" y2="90%">
       <stop offset="0%" stop-color="#ffffff" />
-      <stop offset="30%" stop-color="#fff1d6" />
-      <stop offset="70%" stop-color="#fbbf24" />
+      <stop offset="25%" stop-color="#fff3dc" />
+      <stop offset="65%" stop-color="#fbbf24" />
       <stop offset="100%" stop-color="#d97706" />
     </linearGradient>
 
@@ -36,12 +36,12 @@
 
     <!-- Drop Shadows -->
     <filter id="shadowG" x="-20%" y="-20%" width="150%" height="150%">
-      <feDropShadow dx="0" dy="24" stdDeviation="28" flood-color="#000000" flood-opacity="0.65" />
-      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#f59e0b" flood-opacity="0.2" />
+      <feDropShadow dx="0" dy="20" stdDeviation="24" flood-color="#000000" flood-opacity="0.75" />
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#f59e0b" flood-opacity="0.25" />
     </filter>
 
     <filter id="sparkleGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feGaussianBlur stdDeviation="7" result="blur" />
       <feMerge>
         <feMergeNode in="blur" />
         <feMergeNode in="SourceGraphic" />
@@ -49,72 +49,71 @@
     </filter>
   </defs>
 
-  <!-- Squircle Base Canvas (macOS / Modern Windows standard) -->
-  <rect x="64" y="64" width="896" height="896" rx="208" fill="url(#bgGlow)" stroke="url(#rimStroke)" stroke-width="5" />
+  <!-- Full Bleed Squircle Base Canvas (Maximized taskbar presence) -->
+  <rect x="16" y="16" width="992" height="992" rx="220" fill="url(#bgGlow)" stroke="url(#rimStroke)" stroke-width="8" />
   
   <!-- Subtle Internal Rim Highlight -->
-  <rect x="74" y="74" width="876" height="876" rx="198" fill="none" stroke="rgba(255, 255, 255, 0.05)" stroke-width="2" />
+  <rect x="28" y="28" width="968" height="968" rx="208" fill="none" stroke="rgba(255, 255, 255, 0.08)" stroke-width="2" />
 
   <!-- Ambient Golden Center Glow -->
-  <rect x="64" y="64" width="896" height="896" rx="208" fill="url(#ambientAmber)" />
+  <rect x="16" y="16" width="992" height="992" rx="220" fill="url(#ambientAmber)" />
 
-  <!-- Geometric Decorative Editorial Circles (Subtle) -->
-  <circle cx="512" cy="512" r="320" stroke="rgba(255, 255, 255, 0.03)" stroke-width="1.5" stroke-dasharray="8 8" fill="none" />
-  <circle cx="512" cy="512" r="210" stroke="rgba(245, 158, 11, 0.05)" stroke-width="1" fill="none" />
+  <!-- Geometric Decorative Editorial Circles (Subtle background texture) -->
+  <circle cx="512" cy="512" r="390" stroke="rgba(255, 255, 255, 0.04)" stroke-width="2" stroke-dasharray="10 10" fill="none" />
+  <circle cx="512" cy="512" r="260" stroke="rgba(245, 158, 11, 0.06)" stroke-width="1.5" fill="none" />
 
-  <!-- Customized Letter G Group -->
+  <!-- Customized Bold Letter G Group -->
   <g filter="url(#shadowG)">
-    <!-- Main Outer Body of Letter G -->
-    <!-- Formed with precision bezier curves, modern thick geometric stroke, chiseled top cut, and integrated horizontal caret bar -->
+    <!-- Formed with precision bezier curves, bold proportions, chiseled aperture, and horizontal quill crossbar -->
     <path d="
-      M 690 320
-      L 630 380
-      C 595 348 555 330 508 330
-      C 402 330 324 412 324 518
-      C 324 624 402 706 508 706
-      C 604 706 678 642 692 550
-      L 512 550
-      L 512 470
-      L 772 470
-      C 776 470 780 474 780 478
-      L 780 540
-      C 762 678 650 786 508 786
-      C 354 786 236 668 236 518
-      C 236 368 354 250 508 250
-      C 578 250 642 276 690 320
+      M 763 239
+      L 680 322
+      C 632 278 577 253 512 253
+      C 366 253 258 366 258 512
+      C 258 658 366 771 512 771
+      C 644 771 747 683 766 556
+      L 518 556
+      L 518 446
+      L 876 446
+      C 882 446 887 451 887 457
+      L 887 542
+      C 862 732 708 882 512 882
+      C 300 882 137 719 137 512
+      C 137 305 300 142 512 142
+      C 609 142 697 178 763 239
       Z
     " fill="url(#gMainGrad)" />
 
     <!-- Pen-Nib / Quill Inlay Accent in the horizontal bar -->
     <path d="
-      M 752 485
-      L 770 510
-      L 752 535
-      L 560 535
-      L 560 485
+      M 850 466
+      L 872 501
+      L 850 536
+      L 584 536
+      L 584 466
       Z
-    " fill="url(#nibGrad)" opacity="0.35" />
+    " fill="url(#nibGrad)" opacity="0.4" />
 
     <!-- Editorial Nib Slit Detail -->
-    <line x1="560" y1="510" x2="745" y2="510" stroke="#12141a" stroke-width="3.5" stroke-linecap="round" opacity="0.8" />
+    <line x1="584" y1="501" x2="840" y2="501" stroke="#101217" stroke-width="4.5" stroke-linecap="round" opacity="0.85" />
   </g>
 
   <!-- Distinctive Diamond Caret Spark (Symbol of AI writing & language precision) -->
   <g filter="url(#sparkleGlow)">
     <!-- Floating Spark at top-right aperture -->
     <path d="
-      M 740 270
-      C 740 286 754 300 770 300
-      C 754 300 740 314 740 330
-      C 740 314 726 300 710 300
-      C 726 300 740 286 740 270
+      M 830 190
+      C 830 212 848 230 870 230
+      C 848 230 830 248 830 270
+      C 830 248 812 230 790 230
+      C 812 230 830 212 830 190
       Z
     " fill="#fbbf24" />
 
-    <circle cx="740" cy="300" r="3" fill="#ffffff" />
+    <circle cx="830" cy="230" r="4" fill="#ffffff" />
   </g>
 
   <!-- Minor Accent Spark on the bottom curve -->
-  <circle cx="688" cy="670" r="4.5" fill="#f59e0b" opacity="0.75" />
-  <circle cx="688" cy="670" r="2" fill="#fff" opacity="0.9" />
+  <circle cx="755" cy="730" r="6" fill="#f59e0b" opacity="0.8" />
+  <circle cx="755" cy="730" r="2.5" fill="#fff" opacity="0.95" />
 </svg>

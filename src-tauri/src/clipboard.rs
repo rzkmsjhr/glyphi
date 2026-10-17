@@ -26,14 +26,18 @@ pub fn simulate_copy() -> Result<String, String> {
     #[cfg(target_os = "macos")]
     {
         let _ = enigo.key(Key::Meta, Direction::Press);
-        let _ = enigo.key(Key::Unicode('c'), Direction::Click);
+        thread::sleep(Duration::from_millis(25));
+        let _ = enigo.key(Key::C, Direction::Click);
+        thread::sleep(Duration::from_millis(25));
         let _ = enigo.key(Key::Meta, Direction::Release);
     }
 
     #[cfg(not(target_os = "macos"))]
     {
         let _ = enigo.key(Key::Control, Direction::Press);
-        let _ = enigo.key(Key::Unicode('c'), Direction::Click);
+        thread::sleep(Duration::from_millis(25));
+        let _ = enigo.key(Key::C, Direction::Click);
+        thread::sleep(Duration::from_millis(25));
         let _ = enigo.key(Key::Control, Direction::Release);
     }
 
@@ -48,7 +52,7 @@ pub fn simulate_paste(text: &str) -> Result<(), String> {
     set_clipboard_text(text)?;
 
     // Short sleep before simulating paste
-    thread::sleep(Duration::from_millis(50));
+    thread::sleep(Duration::from_millis(80));
 
     let mut enigo = Enigo::new(&Settings::default())
         .map_err(|e| format!("Enigo init error: {:?}", e))?;
@@ -56,14 +60,18 @@ pub fn simulate_paste(text: &str) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
         let _ = enigo.key(Key::Meta, Direction::Press);
-        let _ = enigo.key(Key::Unicode('v'), Direction::Click);
+        thread::sleep(Duration::from_millis(25));
+        let _ = enigo.key(Key::V, Direction::Click);
+        thread::sleep(Duration::from_millis(25));
         let _ = enigo.key(Key::Meta, Direction::Release);
     }
 
     #[cfg(not(target_os = "macos"))]
     {
         let _ = enigo.key(Key::Control, Direction::Press);
-        let _ = enigo.key(Key::Unicode('v'), Direction::Click);
+        thread::sleep(Duration::from_millis(25));
+        let _ = enigo.key(Key::V, Direction::Click);
+        thread::sleep(Duration::from_millis(25));
         let _ = enigo.key(Key::Control, Direction::Release);
     }
 

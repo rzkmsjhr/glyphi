@@ -60,6 +60,8 @@ fn apply_replacement(app: AppHandle, new_text: String) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("floating") {
         let _ = window.hide();
     }
+    // Give OS time to reactivate target window
+    std::thread::sleep(std::time::Duration::from_millis(120));
     simulate_paste(&new_text)
 }
 
@@ -142,9 +144,9 @@ pub fn run() {
             let initial_settings = load_settings(&handle);
             let settings_arc = Arc::new(Mutex::new(initial_settings.clone()));
 
-            // Explicitly set the window icon for taskbar and titlebar
+            // Explicitly set the window icon for taskbar and titlebar (high-res 256x256)
             if let Some(main_window) = app.get_webview_window("main") {
-                let icon_bytes = include_bytes!("../icons/128x128.png");
+                let icon_bytes = include_bytes!("../icons/128x128@2x.png");
                 if let Ok(img) = image::load_from_memory(icon_bytes) {
                     let rgba = img.to_rgba8();
                     let (w, h) = rgba.dimensions();

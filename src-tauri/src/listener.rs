@@ -1,4 +1,4 @@
-use crate::clipboard::get_clipboard_text;
+use crate::clipboard::{get_clipboard_text, set_clipboard_text, simulate_copy};
 use crate::models::{AppSettings, TriggerEventPayload};
 use rdev::{listen, Button, Event, EventType};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -20,6 +20,8 @@ pub fn start_global_listener(app: AppHandle, settings: Arc<Mutex<AppSettings>>) 
 
     let mouse_pos = Arc::new(Mutex::new((0.0f64, 0.0f64)));
     let mouse_down_pos = Arc::new(Mutex::new((0.0f64, 0.0f64)));
+    let last_click_time = Arc::new(Mutex::new(None::<Instant>));
+    let last_click_pos = Arc::new(Mutex::new((0.0f64, 0.0f64)));
     let last_typing_time = Arc::new(Mutex::new(None::<Instant>));
     let pause_triggered = Arc::new(AtomicBool::new(false));
 
@@ -102,14 +104,65 @@ pub fn start_global_listener(app: AppHandle, settings: Arc<Mutex<AppSettings>>) 
                     let dy = cur_y - down_y;
                     let distance_sq = dx * dx + dy * dy;
 
-                    // Only trigger if mouse was dragged (selection motion)
-                    if distance_sq > 40.0 {
+                    let now = Instant::now();
+                    let is_double_click = {
+                        let last_time = *last_click_time.lock().unwrap();
+                        let (lx, ly) = *last_click_pos.lock().unwrap();
+                        let dist_to_prev = (cur_x - lx).powi(2) + (cur_y - ly).powi(2);
+                        if let Some(t) = last_time {
+                            t.elapsed() < Duration::from_millis(450) && dist_to_prev < 49.0
+                        } else {
+                            false
+                        }
+                    };
+                    *last_click_time.lock().unwrap() = Some(now);
+                    *last_click_pos.lock().unwrap() = (cur_x, cur_y);
+
+                    let is_drag_selection = distance_sq > 25.0;
+
+                    if is_drag_selection || is_double_click {
+                        // Check if cursor is inside our own floating window; if so, ignore
+                        if let Some(win) = app.get_webview_window("floating") {
+                            if win.is_visible().unwrap_or(false) {
+                                if let (Ok(pos), Ok(size)) = (win.outer_position(), win.outer_size()) {
+                                    if cur_x >= pos.x as f64
+                                        && cur_x <= (pos.x + size.width as i32) as f64
+                                        && cur_y >= pos.y as f64
+                                        && cur_y <= (pos.y + size.height as i32) as f64
+                                    {
+                                        return;
+                                    }
+                                }
+                            }
+                        }
+
                         let app_clone = app.clone();
                         thread::spawn(move || {
-                            // Brief wait before reading selection
-                            thread::sleep(Duration::from_millis(150));
-                            let selected_text = get_clipboard_text().unwrap_or_default();
-                            show_widget_at(&app_clone, cur_x, cur_y, "selection", selected_text);
+                            // Micro sleep for host app to finish drawing selection highlight
+                            thread::sleep(Duration::from_millis(70));
+
+                            // Read existing clipboard to preserve it if nothing was selected
+                            let prev_clipboard = get_clipboard_text().ok();
+
+                            // Empty clipboard temporarily to test if copy generates text
+                            let _ = set_clipboard_text("");
+                            thread::sleep(Duration::from_millis(20));
+
+                            // Simulate Ctrl+C / Cmd+C while target app still holds foreground focus
+                            let _ = simulate_copy();
+                            thread::sleep(Duration::from_millis(60));
+
+                            let selected = get_clipboard_text().unwrap_or_default();
+                            let trimmed = selected.trim();
+
+                            if !trimmed.is_empty() {
+                                show_widget_at(&app_clone, cur_x, cur_y, "selection", selected);
+                            } else {
+                                // Restore previous clipboard if nothing was highlighted
+                                if let Some(prev) = prev_clipboard {
+                                    let _ = set_clipboard_text(&prev);
+                                }
+                            }
                         });
                     }
                 }
