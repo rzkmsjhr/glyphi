@@ -510,18 +510,6 @@ export const SettingsDashboard: React.FC = () => {
                 <img src="/app-icon.svg" className="card-brand-logo" alt="Glyphi" />
                 <h3>Close Glyphi Settings</h3>
               </div>
-              <button
-                type="button"
-                className="card-close-btn"
-                onClick={() => setShowCloseModal(false)}
-                title="Dismiss (Esc)"
-                aria-label="Dismiss (Esc)"
-              >
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <line x1="1" y1="1" x2="11" y2="11" />
-                  <line x1="11" y1="1" x2="1" y2="11" />
-                </svg>
-              </button>
             </div>
 
             <div className="modal-body">
