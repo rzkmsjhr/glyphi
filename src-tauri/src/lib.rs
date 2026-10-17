@@ -10,7 +10,7 @@ use config::{load_settings, save_settings as persist_settings};
 use listener::{show_widget_at, start_global_listener};
 use models::{AppSettings, ProcessTextRequest, ProcessTextResponse};
 use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, LogicalSize, Manager, PhysicalPosition, Position, Size, State};
+use tauri::{AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, Position, Size, State};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 pub struct AppState {
@@ -31,7 +31,9 @@ fn save_settings(
 ) -> Result<(), String> {
     persist_settings(&app, &settings)?;
     let mut current = state.settings.lock().unwrap();
+    let theme = settings.theme.clone();
     *current = settings;
+    let _ = app.emit("theme-changed", theme);
     Ok(())
 }
 

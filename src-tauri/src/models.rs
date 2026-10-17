@@ -1,8 +1,14 @@
 use serde::{Deserialize, Serialize};
 
+fn default_theme() -> String {
+    "dark".to_string()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppSettings {
     pub provider: String, // "gemini" | "chatgpt"
+    #[serde(default = "default_theme")]
+    pub theme: String, // "dark" | "light"
     pub gemini_api_key: String,
     pub gemini_model: String, // e.g. "gemini-2.0-flash", "gemini-1.5-flash"
     pub openai_api_key: String,
@@ -21,6 +27,7 @@ impl Default for AppSettings {
     fn default() -> Self {
         Self {
             provider: "gemini".to_string(),
+            theme: "dark".to_string(),
             gemini_api_key: String::new(),
             gemini_model: "gemini-3.8-flash".to_string(),
             openai_api_key: String::new(),

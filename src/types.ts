@@ -1,5 +1,6 @@
 export interface AppSettings {
   provider: "gemini" | "chatgpt";
+  theme: "dark" | "light";
   gemini_api_key: string;
   gemini_model: string;
   openai_api_key: string;

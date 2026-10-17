@@ -83,15 +83,31 @@ export const FloatingWidget: React.FC = () => {
     return () => cancelAnimationFrame(frameId);
   }, [mode, loading, error, response, viewTab]);
 
-  // Load configured default target language
+  // Load configured default target language and theme
   useEffect(() => {
+    const localTheme = localStorage.getItem("glyphi-theme") || "dark";
+    document.documentElement.setAttribute("data-theme", localTheme);
+
     invoke<AppSettings>("get_settings")
       .then((s) => {
+        if (s && s.theme) {
+          document.documentElement.setAttribute("data-theme", s.theme);
+          localStorage.setItem("glyphi-theme", s.theme);
+        }
         if (s && s.target_language) {
           setTargetLanguage(s.target_language);
         }
       })
       .catch(() => {});
+
+    const unlistenTheme = listen<string>("theme-changed", (event) => {
+      document.documentElement.setAttribute("data-theme", event.payload);
+      localStorage.setItem("glyphi-theme", event.payload);
+    });
+
+    return () => {
+      unlistenTheme.then((u) => u());
+    };
   }, []);
 
   // Listen for trigger events from the Rust background listener

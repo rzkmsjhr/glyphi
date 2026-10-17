@@ -7,37 +7,37 @@
       <stop offset="100%" stop-color="#0a0b10" />
     </radialGradient>
 
-    <radialGradient id="ambientAmber" cx="52%" cy="48%" r="60%">
-      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.28" />
-      <stop offset="45%" stop-color="#d97706" stop-opacity="0.12" />
-      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0" />
+    <radialGradient id="ambientBlue" cx="52%" cy="48%" r="60%">
+      <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.28" />
+      <stop offset="45%" stop-color="#2563eb" stop-opacity="0.12" />
+      <stop offset="100%" stop-color="#3b82f6" stop-opacity="0" />
     </radialGradient>
 
     <!-- Outer Rim Stroke -->
     <linearGradient id="rimStroke" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#ffffff" stop-opacity="0.3" />
       <stop offset="40%" stop-color="#4f5873" stop-opacity="0.5" />
-      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0.45" />
+      <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.45" />
     </linearGradient>
 
     <!-- Letter G Main Gradient -->
     <linearGradient id="gMainGrad" x1="15%" y1="10%" x2="85%" y2="90%">
       <stop offset="0%" stop-color="#ffffff" />
-      <stop offset="25%" stop-color="#fff3dc" />
-      <stop offset="65%" stop-color="#fbbf24" />
-      <stop offset="100%" stop-color="#d97706" />
+      <stop offset="25%" stop-color="#e0f2fe" />
+      <stop offset="65%" stop-color="#60a5fa" />
+      <stop offset="100%" stop-color="#2563eb" />
     </linearGradient>
 
     <!-- Accent Pen Nib Gradient -->
     <linearGradient id="nibGrad" x1="0%" y1="50%" x2="100%" y2="50%">
-      <stop offset="0%" stop-color="#f59e0b" />
-      <stop offset="100%" stop-color="#fbbf24" />
+      <stop offset="0%" stop-color="#3b82f6" />
+      <stop offset="100%" stop-color="#60a5fa" />
     </linearGradient>
 
     <!-- Drop Shadows -->
     <filter id="shadowG" x="-20%" y="-20%" width="150%" height="150%">
       <feDropShadow dx="0" dy="20" stdDeviation="24" flood-color="#000000" flood-opacity="0.75" />
-      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#f59e0b" flood-opacity="0.25" />
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#3b82f6" flood-opacity="0.25" />
     </filter>
 
     <filter id="sparkleGlow" x="-50%" y="-50%" width="200%" height="200%">
@@ -55,12 +55,12 @@
   <!-- Subtle Internal Rim Highlight -->
   <rect x="28" y="28" width="968" height="968" rx="208" fill="none" stroke="rgba(255, 255, 255, 0.08)" stroke-width="2" />
 
-  <!-- Ambient Golden Center Glow -->
-  <rect x="16" y="16" width="992" height="992" rx="220" fill="url(#ambientAmber)" />
+  <!-- Ambient Blue Center Glow -->
+  <rect x="16" y="16" width="992" height="992" rx="220" fill="url(#ambientBlue)" />
 
   <!-- Geometric Decorative Editorial Circles (Subtle background texture) -->
   <circle cx="512" cy="512" r="390" stroke="rgba(255, 255, 255, 0.04)" stroke-width="2" stroke-dasharray="10 10" fill="none" />
-  <circle cx="512" cy="512" r="260" stroke="rgba(245, 158, 11, 0.06)" stroke-width="1.5" fill="none" />
+  <circle cx="512" cy="512" r="260" stroke="rgba(59, 130, 246, 0.08)" stroke-width="1.5" fill="none" />
 
   <!-- Customized Bold Letter G Group -->
   <g filter="url(#shadowG)">
@@ -108,12 +108,12 @@
       C 830 248 812 230 790 230
       C 812 230 830 212 830 190
       Z
-    " fill="#fbbf24" />
+    " fill="#60a5fa" />
 
     <circle cx="830" cy="230" r="4" fill="#ffffff" />
   </g>
 
   <!-- Minor Accent Spark on the bottom curve -->
-  <circle cx="755" cy="730" r="6" fill="#f59e0b" opacity="0.8" />
+  <circle cx="755" cy="730" r="6" fill="#3b82f6" opacity="0.8" />
   <circle cx="755" cy="730" r="2.5" fill="#fff" opacity="0.95" />
 </svg>

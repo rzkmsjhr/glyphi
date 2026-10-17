@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { emit } from "@tauri-apps/api/event";
 import { AppSettings, ProcessTextResponse } from "../types";
 import { TARGET_LANGUAGES } from "./FloatingWidget";
 
@@ -29,9 +30,28 @@ export const SettingsDashboard: React.FC = () => {
       if (data.gemini_model === "gemini-2.0-flash" || !data.gemini_model) {
         data.gemini_model = "gemini-3.8-flash";
       }
+      if (!data.theme) {
+        data.theme = (localStorage.getItem("glyphi-theme") as "dark" | "light") || "dark";
+      }
+      document.documentElement.setAttribute("data-theme", data.theme);
+      localStorage.setItem("glyphi-theme", data.theme);
       setSettings(data);
     } catch (err) {
       console.error("Failed to load settings:", err);
+    }
+  };
+
+  const handleThemeChange = async (newTheme: "dark" | "light") => {
+    if (!settings) return;
+    const updated = { ...settings, theme: newTheme };
+    setSettings(updated);
+    document.documentElement.setAttribute("data-theme", newTheme);
+    localStorage.setItem("glyphi-theme", newTheme);
+    try {
+      await emit("theme-changed", newTheme);
+      await invoke("save_settings", { settings: updated });
+    } catch (err) {
+      console.error("Failed to sync theme:", err);
     }
   };
 
@@ -329,10 +349,31 @@ export const SettingsDashboard: React.FC = () => {
           </section>
         </div>
 
-        {/* Right Column: Language & Trigger Behaviors */}
+        {/* Right Column: Preferences & Trigger Behaviors */}
         <div className="settings-col">
           <section className="settings-card">
-            <h2>Language & Hotkey</h2>
+            <h2>Preferences & Appearance</h2>
+
+            <div className="form-group">
+              <label>Interface Theme</label>
+              <div className="theme-selector">
+                <button
+                  type="button"
+                  className={`theme-btn ${settings.theme === "dark" ? "active" : ""}`}
+                  onClick={() => handleThemeChange("dark")}
+                >
+                  <span>🌙</span> Dark
+                </button>
+                <button
+                  type="button"
+                  className={`theme-btn ${settings.theme === "light" ? "active" : ""}`}
+                  onClick={() => handleThemeChange("light")}
+                >
+                  <span>☀️</span> Light
+                </button>
+              </div>
+            </div>
+
             <div className="form-group">
               <label htmlFor="target-lang">Default Target Language</label>
               <select
