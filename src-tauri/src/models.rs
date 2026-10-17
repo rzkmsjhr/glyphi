@@ -35,7 +35,7 @@ impl Default for AppSettings {
             provider: "gemini".to_string(),
             theme: "dark".to_string(),
             gemini_api_key: String::new(),
-            gemini_model: "gemini-3.8-flash".to_string(),
+            gemini_model: "gemini-3.5-flash-lite".to_string(),
             openai_api_key: String::new(),
             openai_model: "gpt-4o-mini".to_string(),
             target_language: "English".to_string(),

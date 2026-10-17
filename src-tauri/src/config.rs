@@ -21,8 +21,13 @@ pub fn load_settings(app: &AppHandle) -> AppSettings {
         if path.exists() {
             if let Ok(content) = fs::read_to_string(&path) {
                 if let Ok(mut settings) = serde_json::from_str::<AppSettings>(&content) {
-                    if settings.gemini_model == "gemini-2.0-flash" || settings.gemini_model.is_empty() {
-                        settings.gemini_model = "gemini-3.8-flash".to_string();
+                    if settings.gemini_model == "gemini-2.0-flash"
+                        || settings.gemini_model == "gemini-3.8-flash"
+                        || settings.gemini_model == "gemini-2.5-flash"
+                        || settings.gemini_model == "gemini-1.5-flash"
+                        || settings.gemini_model.is_empty()
+                    {
+                        settings.gemini_model = "gemini-3.5-flash-lite".to_string();
                     }
                     return settings;
                 }

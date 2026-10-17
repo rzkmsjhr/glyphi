@@ -8,9 +8,16 @@ pub struct AiService {
 
 impl AiService {
     pub fn new() -> Self {
-        Self {
-            client: Client::builder().build().unwrap_or_default(),
-        }
+        let client = Client::builder()
+            .tcp_nodelay(true)
+            .tcp_keepalive(Some(std::time::Duration::from_secs(90)))
+            .pool_idle_timeout(Some(std::time::Duration::from_secs(90)))
+            .connect_timeout(std::time::Duration::from_secs(5))
+            .timeout(std::time::Duration::from_secs(30))
+            .build()
+            .unwrap_or_default();
+
+        Self { client }
     }
 
     pub async fn test_connection(
@@ -126,12 +133,11 @@ impl AiService {
         prompt: &str,
     ) -> Result<String, String> {
         let candidate_models: Vec<&str> = match model {
-            "gemini-3.8-flash" => vec!["gemini-3.8-flash", "gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.0-flash"],
-            "gemini-3.5-flash" => vec!["gemini-3.5-flash", "gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.0-flash"],
-            "gemini-2.5-flash" => vec!["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.0-flash"],
-            "gemini-2.0-flash" => vec!["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"],
-            "gemini-1.5-flash" => vec!["gemini-1.5-flash", "gemini-2.5-flash", "gemini-2.0-flash"],
-            _ => vec![model, "gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.0-flash"],
+            "gemini-3.5-flash-lite" => vec!["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.5-flash", "gemini-3.8-flash"],
+            "gemini-3.1-flash-lite" => vec!["gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-3.8-flash"],
+            "gemini-3.5-flash" => vec!["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.8-flash"],
+            "gemini-3.8-flash" => vec!["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.5-flash"],
+            _ => vec![model, "gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.5-flash"],
         };
 
         let mut last_err = String::new();
@@ -147,7 +153,8 @@ impl AiService {
                     "parts": [{ "text": prompt }]
                 }],
                 "generationConfig": {
-                    "temperature": 0.2
+                    "temperature": 0.2,
+                    "maxOutputTokens": 1024
                 }
             });
 
@@ -222,7 +229,8 @@ impl AiService {
                 { "role": "system", "content": system_prompt },
                 { "role": "user", "content": user_prompt }
             ],
-            "temperature": 0.2
+            "temperature": 0.2,
+            "max_tokens": 1024
         });
 
         let res = self
