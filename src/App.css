@@ -40,6 +40,10 @@ body,
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
   background-color: transparent !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
   user-select: none;
 }
 
@@ -61,8 +65,8 @@ body,
   background-color: #15171e;
   border: 1px solid #2b2f3d;
   border-radius: 22px;
-  padding: 0 8px 0 12px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  padding: 0 8px 0 10px;
+  box-shadow: none !important;
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -70,8 +74,17 @@ body,
 .pill-brand {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
   flex-shrink: 0;
+  padding: 0 2px;
+}
+
+.pill-logo {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  object-fit: contain;
+  display: block;
 }
 
 .brand-dot {
@@ -249,11 +262,20 @@ body,
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  box-shadow: none !important;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   box-sizing: border-box;
+}
+
+.card-brand-logo {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  object-fit: contain;
+  display: block;
+  flex-shrink: 0;
 }
 
 .card-header {
@@ -771,9 +793,32 @@ textarea:focus {
   margin-top: 6px;
 }
 
+.error-box-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
 .card-error-box .error-title {
   font-weight: 600;
-  margin-bottom: 2px;
+  margin-bottom: 0;
+}
+
+.retry-btn {
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  background-color: rgba(244, 63, 94, 0.2);
+  color: #fb7185;
+  border: 1px solid rgba(244, 63, 94, 0.4);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.retry-btn:hover:not(:disabled) {
+  background-color: rgba(244, 63, 94, 0.35);
 }
 
 .dashboard-loading {

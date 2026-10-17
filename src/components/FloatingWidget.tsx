@@ -31,6 +31,10 @@ export const FloatingWidget: React.FC = () => {
   const [response, setResponse] = useState<ProcessTextResponse | null>(null);
   const [copied, setCopied] = useState(false);
   const [viewTab, setViewTab] = useState<"diff" | "clean">("diff");
+  const [lastAction, setLastAction] = useState<{
+    action: "grammar" | "translate" | "rewrite";
+    overrideLang?: string;
+  } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const enterPillMode = () => {
@@ -38,7 +42,7 @@ export const FloatingWidget: React.FC = () => {
     setShowTranslatePicker(false);
     setResponse(null);
     setError(null);
-    invoke("resize_floating_widget", { width: 370, height: 44 });
+    invoke("resize_floating_widget", { width: 340, height: 44 });
   };
 
   const enterPreviewMode = (width = 440, height = 320) => {
@@ -121,6 +125,7 @@ export const FloatingWidget: React.FC = () => {
     }
 
     const langToUse = overrideLang || targetLanguage || "Indonesian";
+    setLastAction({ action, overrideLang: langToUse });
 
     try {
       const res = await invoke<ProcessTextResponse>("process_text", {
@@ -169,7 +174,7 @@ export const FloatingWidget: React.FC = () => {
             className="pill-back-btn"
             onClick={() => {
               setShowTranslatePicker(false);
-              invoke("resize_floating_widget", { width: 370, height: 44 });
+              invoke("resize_floating_widget", { width: 340, height: 44 });
             }}
             title="Back to actions"
             aria-label="Back to actions"
@@ -228,9 +233,8 @@ export const FloatingWidget: React.FC = () => {
 
     return (
       <div className="floating-pill-container" ref={containerRef}>
-        <div className="pill-brand">
-          <span className="brand-dot" />
-          <span className="brand-label">Glyphi</span>
+        <div className="pill-brand" title="Glyphi">
+          <img src="/app-icon.svg" className="pill-logo" alt="Glyphi" />
         </div>
 
         <div className="pill-divider" />
@@ -249,7 +253,7 @@ export const FloatingWidget: React.FC = () => {
             className="pill-btn"
             onClick={() => {
               setShowTranslatePicker(true);
-              invoke("resize_floating_widget", { width: 390, height: 44 });
+              invoke("resize_floating_widget", { width: 340, height: 44 });
             }}
             title="Select target language and translate"
           >
@@ -288,7 +292,7 @@ export const FloatingWidget: React.FC = () => {
     <div className="floating-card-container">
       <div className="card-header">
         <div className="card-title">
-          <span className="brand-dot" />
+          <img src="/app-icon.svg" className="card-brand-logo" alt="Glyphi" />
           <span>
             {response
               ? response.action === "grammar"
@@ -382,7 +386,19 @@ export const FloatingWidget: React.FC = () => {
 
         {error && (
           <div className="card-error-box">
-            <p className="error-title">Error</p>
+            <div className="error-box-header">
+              <p className="error-title">Request Issue</p>
+              {lastAction && (
+                <button
+                  type="button"
+                  className="retry-btn"
+                  onClick={() => handleAction(lastAction.action, lastAction.overrideLang)}
+                  disabled={loading}
+                >
+                  Retry
+                </button>
+              )}
+            </div>
             <p className="error-detail">{error}</p>
           </div>
         )}

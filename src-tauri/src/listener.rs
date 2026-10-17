@@ -242,7 +242,7 @@ pub fn show_widget_at(app: &AppHandle, x: f64, y: f64, trigger_type: &str, text:
                 (0, 0, 1920, 1080, 1.0)
             };
 
-        let logical_w = 370.0;
+        let logical_w = 340.0;
         let logical_h = 44.0;
         let physical_w = (logical_w * scale_factor) as i32;
         let physical_h = (logical_h * scale_factor) as i32;

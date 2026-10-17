@@ -87,8 +87,8 @@ export const SettingsDashboard: React.FC = () => {
         req: {
           action,
           text: sandboxText,
-          targetLanguage: settings?.target_language || "English",
-          customPrompt: null,
+          target_language: settings?.target_language || "English",
+          custom_prompt: null,
         },
       });
       setSandboxResponse(res);

@@ -108,43 +108,86 @@ impl AiService {
         model: &str,
         prompt: &str,
     ) -> Result<String, String> {
-        let url = format!(
-            "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}",
-            model, api_key
-        );
+        let candidate_models: Vec<&str> = match model {
+            "gemini-3.8-flash" => vec!["gemini-3.8-flash", "gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.0-flash"],
+            "gemini-3.5-flash" => vec!["gemini-3.5-flash", "gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.0-flash"],
+            "gemini-2.5-flash" => vec!["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.0-flash"],
+            "gemini-2.0-flash" => vec!["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"],
+            "gemini-1.5-flash" => vec!["gemini-1.5-flash", "gemini-2.5-flash", "gemini-2.0-flash"],
+            _ => vec![model, "gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.0-flash"],
+        };
 
-        let body = json!({
-            "contents": [{
-                "parts": [{ "text": prompt }]
-            }],
-            "generationConfig": {
-                "temperature": 0.2
+        let mut last_err = String::new();
+
+        for (idx, target_model) in candidate_models.iter().enumerate() {
+            let url = format!(
+                "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}",
+                target_model, api_key
+            );
+
+            let body = json!({
+                "contents": [{
+                    "parts": [{ "text": prompt }]
+                }],
+                "generationConfig": {
+                    "temperature": 0.2
+                }
+            });
+
+            for attempt in 0..2 {
+                let res = self
+                    .client
+                    .post(&url)
+                    .json(&body)
+                    .send()
+                    .await
+                    .map_err(|e| format!("Network error calling Gemini: {}", e))?;
+
+                let status = res.status();
+                if status.is_success() {
+                    let json_val: serde_json::Value = res
+                        .json()
+                        .await
+                        .map_err(|e| format!("Failed to parse Gemini response: {}", e))?;
+
+                    if let Some(text) = json_val["candidates"][0]["content"]["parts"][0]["text"].as_str() {
+                        return Ok(text.to_string());
+                    } else {
+                        return Err("No text generated in Gemini response".to_string());
+                    }
+                }
+
+                let error_text = res.text().await.unwrap_or_default();
+                let clean_msg = parse_gemini_error(&error_text);
+
+                // Handle 503 (high demand) or 429 (rate limit)
+                if status.as_u16() == 503 || status.as_u16() == 429 {
+                    last_err = clean_msg;
+                    if attempt == 0 {
+                        tokio::time::sleep(std::time::Duration::from_millis(700)).await;
+                        continue;
+                    }
+                    break;
+                } else if status.as_u16() == 404 {
+                    // Model name not found on v1beta endpoint, try next candidate
+                    last_err = clean_msg;
+                    break;
+                } else {
+                    // Fatal client error (e.g. 400 invalid key, 403)
+                    return Err(clean_msg);
+                }
             }
-        });
 
-        let res = self
-            .client
-            .post(&url)
-            .json(&body)
-            .send()
-            .await
-            .map_err(|e| format!("Network error calling Gemini: {}", e))?;
-
-        if !res.status().is_success() {
-            let error_text = res.text().await.unwrap_or_default();
-            return Err(format!("Gemini API error: {}", error_text));
+            if idx + 1 < candidate_models.len() {
+                tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+            }
         }
 
-        let json_val: serde_json::Value = res
-            .json()
-            .await
-            .map_err(|e| format!("Failed to parse Gemini response: {}", e))?;
-
-        if let Some(text) = json_val["candidates"][0]["content"]["parts"][0]["text"].as_str() {
-            Ok(text.to_string())
+        Err(if last_err.is_empty() {
+            "Gemini servers are currently experiencing high demand. Please try again shortly.".to_string()
         } else {
-            Err("No text generated in Gemini response".to_string())
-        }
+            last_err
+        })
     }
 
     async fn call_openai(
@@ -285,4 +328,16 @@ fn compute_diff(original: &str, revised: &str) -> Vec<DiffItem> {
     }
 
     items
+}
+
+fn parse_gemini_error(error_text: &str) -> String {
+    if let Ok(json_val) = serde_json::from_str::<serde_json::Value>(error_text) {
+        if let Some(msg) = json_val["error"]["message"].as_str() {
+            if msg.contains("high demand") || msg.contains("503") || msg.contains("UNAVAILABLE") {
+                return "Gemini service is temporarily experiencing high demand. Please try again shortly, or switch models in Settings.".to_string();
+            }
+            return msg.to_string();
+        }
+    }
+    format!("Gemini API error: {}", error_text)
 }
