@@ -66,6 +66,8 @@ pub struct ProcessTextResponse {
     pub result: String,
     pub action: String,
     pub diff: Vec<DiffItem>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub transliteration: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

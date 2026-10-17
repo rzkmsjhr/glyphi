@@ -25,6 +25,7 @@ export interface ProcessTextResponse {
   result: string;
   action: string;
   diff: DiffItem[];
+  transliteration?: string;
 }
 
 export interface TriggerEventPayload {

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { emit, listen } from "@tauri-apps/api/event";
 import { AppSettings, ProcessTextResponse } from "../types";
-import { TARGET_LANGUAGES } from "./FloatingWidget";
+import { TARGET_LANGUAGES, getRomajiLabel } from "./FloatingWidget";
 
 export const SettingsDashboard: React.FC = () => {
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -385,6 +385,17 @@ export const SettingsDashboard: React.FC = () => {
                     return <span key={idx}>{item.text}</span>;
                   })}
                 </div>
+
+                {sandboxResponse.transliteration && (
+                  <div className="translation-romaji-box">
+                    <div className="romaji-header">
+                      <span className="romaji-label">
+                        {getRomajiLabel(settings?.target_language || "Japanese")}:
+                      </span>
+                    </div>
+                    <div className="romaji-text">{sandboxResponse.transliteration}</div>
+                  </div>
+                )}
               </div>
             )}
           </section>

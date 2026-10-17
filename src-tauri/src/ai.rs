@@ -43,6 +43,13 @@ impl AiService {
         settings: &AppSettings,
         req: &ProcessTextRequest,
     ) -> Result<ProcessTextResponse, String> {
+        let is_trans = req.action == "translate";
+        let target_lang = req
+            .target_language
+            .as_deref()
+            .unwrap_or(&settings.target_language);
+        let needs_romaji = is_trans && is_phonetic_target_lang(target_lang);
+
         let (system_prompt, user_content) = match req.action.as_str() {
             "grammar" => {
                 let prompt = req
@@ -52,15 +59,19 @@ impl AiService {
                 (prompt.to_string(), req.text.clone())
             }
             "translate" => {
-                let lang = req
-                    .target_language
-                    .as_deref()
-                    .unwrap_or(&settings.target_language);
                 let template = req
                     .custom_prompt
                     .as_deref()
                     .unwrap_or(&settings.translate_prompt);
-                let prompt = template.replace("{target_language}", lang);
+                let base_prompt = template.replace("{target_language}", target_lang);
+                let prompt = if needs_romaji {
+                    format!(
+                        "{}\n\nIMPORTANT: You must also provide the phonetic Latin reading / romanization (Romaji for Japanese, Pinyin for Chinese, Romaja for Korean, phonetic Latin transliteration for Thai and Arabic).\nFormat your response EXACTLY as:\n[Translated text in native script]\nROMANIZATION: [Phonetic romanization text in Latin alphabet]\nDo not add any other commentary or prefix.",
+                        base_prompt
+                    )
+                } else {
+                    base_prompt
+                };
                 (prompt, req.text.clone())
             }
             "rewrite" => {
@@ -91,7 +102,12 @@ impl AiService {
             _ => return Err(format!("Unsupported provider: {}", settings.provider)),
         };
 
-        let trimmed_result = result.trim().to_string();
+        let (trimmed_result, transliteration) = if needs_romaji {
+            parse_translation_and_transliteration(&result)
+        } else {
+            (result.trim().to_string(), None)
+        };
+
         let diff = compute_diff(&req.text, &trimmed_result);
 
         Ok(ProcessTextResponse {
@@ -99,6 +115,7 @@ impl AiService {
             result: trimmed_result,
             action: req.action.clone(),
             diff,
+            transliteration,
         })
     }
 
@@ -340,4 +357,43 @@ fn parse_gemini_error(error_text: &str) -> String {
         }
     }
     format!("Gemini API error: {}", error_text)
+}
+
+fn is_phonetic_target_lang(lang: &str) -> bool {
+    let l = lang.to_lowercase();
+    l.contains("japan")
+        || l.contains("thai")
+        || l.contains("chinese")
+        || l.contains("mandarin")
+        || l.contains("arabic")
+        || l.contains("korean")
+}
+
+fn parse_translation_and_transliteration(raw: &str) -> (String, Option<String>) {
+    let lower = raw.to_lowercase();
+    let markers = [
+        "romanization:",
+        "romaji:",
+        "pinyin:",
+        "romaja:",
+        "transliteration:",
+        "pronunciation:",
+    ];
+
+    for marker in &markers {
+        if let Some(pos) = lower.find(marker) {
+            let translation_part = raw[..pos].trim().trim_end_matches(['*', '_', '`', ' ', ':']);
+            let transliteration_part = raw[pos + marker.len()..]
+                .trim()
+                .trim_matches(['*', '_', '`', ' ']);
+            if !translation_part.is_empty() && !transliteration_part.is_empty() {
+                return (
+                    translation_part.to_string(),
+                    Some(transliteration_part.to_string()),
+                );
+            }
+        }
+    }
+
+    (raw.trim().to_string(), None)
 }

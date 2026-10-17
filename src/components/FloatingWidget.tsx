@@ -21,6 +21,16 @@ export const TARGET_LANGUAGES = [
   "Thai",
 ];
 
+export const getRomajiLabel = (lang: string): string => {
+  const l = lang.toLowerCase();
+  if (l.includes("japan")) return "Romaji";
+  if (l.includes("thai")) return "Romanization";
+  if (l.includes("chinese") || l.includes("mandarin")) return "Pinyin";
+  if (l.includes("arabic")) return "Transliteration";
+  if (l.includes("korean")) return "Romaja";
+  return "Romanization";
+};
+
 export const FloatingWidget: React.FC = () => {
   const [mode, setMode] = useState<"pill" | "preview">("pill");
   const [selectedText, setSelectedText] = useState("");
@@ -30,6 +40,7 @@ export const FloatingWidget: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [response, setResponse] = useState<ProcessTextResponse | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copiedRomaji, setCopiedRomaji] = useState(false);
   const [viewTab, setViewTab] = useState<"diff" | "clean">("diff");
   const [lastAction, setLastAction] = useState<{
     action: "grammar" | "translate" | "rewrite";
@@ -76,7 +87,8 @@ export const FloatingWidget: React.FC = () => {
       }
 
       const totalH = headerH + contentH + footerH + bodyPadding;
-      const clampedH = Math.min(Math.max(totalH, error ? 140 : 155), 480);
+      const minH = error ? 140 : response?.transliteration ? 180 : 155;
+      const clampedH = Math.min(Math.max(totalH, minH), 520);
       invoke("resize_floating_widget", { width: 440, height: Math.round(clampedH) });
     });
 
@@ -207,6 +219,12 @@ export const FloatingWidget: React.FC = () => {
     await invoke("copy_to_clipboard", { text: response.result });
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleCopyRomaji = async (text: string) => {
+    await invoke("copy_to_clipboard", { text });
+    setCopiedRomaji(true);
+    setTimeout(() => setCopiedRomaji(false), 2000);
   };
 
   const handleDismiss = async () => {
@@ -461,7 +479,27 @@ export const FloatingWidget: React.FC = () => {
                   <div className="clean-output-view">{response.original}</div>
                 </div>
               ) : (
-                <div className="clean-output-view">{response.result}</div>
+                <>
+                  <div className="clean-output-view">{response.result}</div>
+                  {response.transliteration && (
+                    <div className="translation-romaji-box">
+                      <div className="romaji-header">
+                        <span className="romaji-label">
+                          {getRomajiLabel(lastAction?.overrideLang || targetLanguage)}:
+                        </span>
+                        <button
+                          type="button"
+                          className="romaji-copy-btn"
+                          onClick={() => handleCopyRomaji(response.transliteration!)}
+                          title="Copy reading"
+                        >
+                          {copiedRomaji ? "Copied" : "Copy"}
+                        </button>
+                      </div>
+                      <div className="romaji-text">{response.transliteration}</div>
+                    </div>
+                  )}
+                </>
               )
             ) : viewTab === "diff" ? (
               <div className="diff-view">
