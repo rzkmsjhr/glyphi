@@ -155,6 +155,44 @@ pub fn run() {
                 }
             }
 
+            // Ensure floating window has no native OS shadow or rectangular DWM frame
+            if let Some(floating_window) = app.get_webview_window("floating") {
+                let _ = floating_window.set_shadow(false);
+
+                #[cfg(target_os = "windows")]
+                {
+                    if let Ok(hwnd) = floating_window.hwnd() {
+                        unsafe {
+                            #[link(name = "dwmapi")]
+                            unsafe extern "system" {
+                                fn DwmSetWindowAttribute(
+                                    hwnd: *mut std::ffi::c_void,
+                                    dwAttribute: u32,
+                                    pvAttribute: *const std::ffi::c_void,
+                                    cbAttribute: u32,
+                                ) -> i32;
+                            }
+                            // DWMWA_WINDOW_CORNER_PREFERENCE = 33, DWMWCP_DONOTROUND = 1
+                            let corner_pref: u32 = 1;
+                            let _ = DwmSetWindowAttribute(
+                                hwnd.0,
+                                33,
+                                &corner_pref as *const _ as *const _,
+                                std::mem::size_of::<u32>() as u32,
+                            );
+                            // DWMWA_BORDER_COLOR = 34, DWMWA_COLOR_NONE = 0xFFFFFFFE
+                            let border_color: u32 = 0xFFFFFFFE;
+                            let _ = DwmSetWindowAttribute(
+                                hwnd.0,
+                                34,
+                                &border_color as *const _ as *const _,
+                                std::mem::size_of::<u32>() as u32,
+                            );
+                        }
+                    }
+                }
+            }
+
             app.manage(AppState {
                 settings: settings_arc.clone(),
                 ai: AiService::new(),
