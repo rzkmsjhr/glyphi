@@ -291,7 +291,7 @@ export const FloatingWidget: React.FC = () => {
         <div className="pill-actions">
           <button
             type="button"
-            className="pill-btn primary"
+            className="pill-btn"
             onClick={() => handleAction("grammar")}
             title="Check Grammar and Spelling"
           >

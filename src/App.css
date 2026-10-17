@@ -139,35 +139,44 @@ body,
 .pill-actions {
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   flex-shrink: 0;
 }
 
 .pill-btn {
   background: transparent;
-  border: none;
+  border: 1px solid var(--border-color);
   color: var(--text-primary);
   font-size: 12px;
   font-weight: 500;
-  padding: 5px 9px;
+  padding: 4px 9px;
   border-radius: 12px;
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: all 0.15s ease;
   white-space: nowrap;
   line-height: 1;
 }
 
 .pill-btn:hover {
-  background-color: var(--bg-surface-elevated);
-}
-
-.pill-btn.primary {
   background-color: var(--accent-subtle);
+  border-color: var(--accent);
   color: var(--accent-text);
 }
 
+.pill-btn:active {
+  transform: scale(0.97);
+}
+
+.pill-btn.primary {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
 .pill-btn.primary:hover {
-  background-color: var(--accent-subtle-hover);
+  background-color: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: #ffffff;
 }
 
 .pill-close-btn {
