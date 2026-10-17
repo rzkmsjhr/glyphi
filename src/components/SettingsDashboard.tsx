@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { AppSettings, ProcessTextResponse } from "../types";
+import { TARGET_LANGUAGES } from "./FloatingWidget";
 
 export const SettingsDashboard: React.FC = () => {
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -341,15 +342,11 @@ export const SettingsDashboard: React.FC = () => {
                   setSettings({ ...settings, target_language: e.target.value })
                 }
               >
-                <option value="English">English</option>
-                <option value="Indonesian">Indonesian (Bahasa Indonesia)</option>
-                <option value="Spanish">Spanish</option>
-                <option value="Japanese">Japanese</option>
-                <option value="French">French</option>
-                <option value="German">German</option>
-                <option value="Mandarin Chinese">Mandarin Chinese</option>
-                <option value="Portuguese">Portuguese</option>
-                <option value="Korean">Korean</option>
+                {TARGET_LANGUAGES.map((lang) => (
+                  <option key={lang} value={lang}>
+                    {lang === "Indonesian" ? "Indonesian (Bahasa Indonesia)" : lang}
+                  </option>
+                ))}
               </select>
             </div>
 

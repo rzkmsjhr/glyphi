@@ -4,19 +4,19 @@ import { listen } from "@tauri-apps/api/event";
 import { AppSettings, ProcessTextResponse, TriggerEventPayload } from "../types";
 
 export const TARGET_LANGUAGES = [
-  "Indonesian",
   "English",
-  "Spanish",
-  "Japanese",
-  "French",
+  "Indonesian",
+  "Dutch",
   "German",
+  "Arabic",
+  "Japanese",
+  "Spanish",
+  "French",
   "Mandarin Chinese",
   "Korean",
   "Portuguese",
   "Italian",
-  "Arabic",
   "Russian",
-  "Dutch",
   "Vietnamese",
   "Thai",
 ];
@@ -24,7 +24,7 @@ export const TARGET_LANGUAGES = [
 export const FloatingWidget: React.FC = () => {
   const [mode, setMode] = useState<"pill" | "preview">("pill");
   const [selectedText, setSelectedText] = useState("");
-  const [targetLanguage, setTargetLanguage] = useState("Indonesian");
+  const [targetLanguage, setTargetLanguage] = useState("English");
   const [showTranslatePicker, setShowTranslatePicker] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -157,7 +157,7 @@ export const FloatingWidget: React.FC = () => {
       setViewTab("diff");
     }
 
-    const langToUse = overrideLang || targetLanguage || "Indonesian";
+    const langToUse = overrideLang || targetLanguage || "English";
     setLastAction({ action, overrideLang: langToUse });
 
     try {
