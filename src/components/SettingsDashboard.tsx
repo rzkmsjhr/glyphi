@@ -127,7 +127,7 @@ export const SettingsDashboard: React.FC = () => {
       </header>
 
       <div className="settings-grid">
-        {/* Left Column: AI Provider & Triggers */}
+        {/* Left Column: AI Provider & Live Sandbox */}
         <div className="settings-col">
           <section className="settings-card">
             <h2>AI Provider & Credentials</h2>
@@ -237,7 +237,7 @@ export const SettingsDashboard: React.FC = () => {
             <div className="form-row test-connection-row">
               <button
                 type="button"
-                className="btn secondary"
+                className="btn secondary sm"
                 onClick={handleTestConnection}
                 disabled={testingConnection}
               >
@@ -251,108 +251,15 @@ export const SettingsDashboard: React.FC = () => {
             </div>
           </section>
 
-          <section className="settings-card">
-            <h2>Trigger Conditions</h2>
-            <div className="form-checkbox-group">
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={settings.auto_trigger_selection}
-                  onChange={(e) =>
-                    setSettings({ ...settings, auto_trigger_selection: e.target.checked })
-                  }
-                />
-                <div>
-                  <strong>Show widget on text selection</strong>
-                  <p>Pops up the floating widget when text is highlighted anywhere in the system.</p>
-                </div>
-              </label>
-
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={settings.auto_trigger_pause}
-                  onChange={(e) =>
-                    setSettings({ ...settings, auto_trigger_pause: e.target.checked })
-                  }
-                />
-                <div>
-                  <strong>Show widget on typing pause</strong>
-                  <p>Surfaces an unobtrusive trigger pill when you pause typing in any app.</p>
-                </div>
-              </label>
-            </div>
-
-            {settings.auto_trigger_pause && (
-              <div className="form-group range-group">
-                <label>
-                  Pause delay: <span>{settings.pause_delay_ms / 1000}s</span>
-                </label>
-                <input
-                  type="range"
-                  min="800"
-                  max="3000"
-                  step="200"
-                  value={settings.pause_delay_ms}
-                  onChange={(e) =>
-                    setSettings({ ...settings, pause_delay_ms: Number(e.target.value) })
-                  }
-                />
-              </div>
-            )}
-
-            <div className="form-group">
-              <label>Global Hotkey Shortcut</label>
-              <input
-                type="text"
-                value={settings.global_shortcut}
-                onChange={(e) =>
-                  setSettings({ ...settings, global_shortcut: e.target.value })
-                }
-                placeholder="Alt+G"
-              />
-              <span className="field-hint">
-                Pressing this shortcut anytime grabs current selection and shows Glyphi.
-              </span>
-            </div>
-          </section>
-        </div>
-
-        {/* Right Column: Language & Interactive Sandbox */}
-        <div className="settings-col">
-          <section className="settings-card">
-            <h2>Language & Translation</h2>
-            <div className="form-group">
-              <label htmlFor="target-lang">Default Target Language</label>
-              <select
-                id="target-lang"
-                value={settings.target_language}
-                onChange={(e) =>
-                  setSettings({ ...settings, target_language: e.target.value })
-                }
-              >
-                <option value="English">English</option>
-                <option value="Indonesian">Indonesian (Bahasa Indonesia)</option>
-                <option value="Spanish">Spanish</option>
-                <option value="Japanese">Japanese</option>
-                <option value="French">French</option>
-                <option value="German">German</option>
-                <option value="Mandarin Chinese">Mandarin Chinese</option>
-                <option value="Portuguese">Portuguese</option>
-                <option value="Korean">Korean</option>
-              </select>
-            </div>
-          </section>
-
           <section className="settings-card sandbox-card">
             <h2>Live Sandbox</h2>
             <p className="card-desc">
-              Test grammar checks and translation live with your configured API keys:
+              Test grammar checks and translation live with your configured keys:
             </p>
 
             <textarea
               className="sandbox-textarea"
-              rows={3}
+              rows={2}
               value={sandboxText}
               onChange={(e) => setSandboxText(e.target.value)}
               placeholder="Type or paste sample text here..."
@@ -360,6 +267,7 @@ export const SettingsDashboard: React.FC = () => {
 
             <div className="sandbox-actions">
               <button
+                type="button"
                 className="btn primary sm"
                 onClick={() => handleRunSandbox("grammar")}
                 disabled={sandboxRunning}
@@ -367,13 +275,15 @@ export const SettingsDashboard: React.FC = () => {
                 Check Grammar
               </button>
               <button
+                type="button"
                 className="btn secondary sm"
                 onClick={() => handleRunSandbox("translate")}
                 disabled={sandboxRunning}
               >
-                Translate to {settings.target_language}
+                Translate
               </button>
               <button
+                type="button"
                 className="btn secondary sm"
                 onClick={() => handleRunSandbox("rewrite")}
                 disabled={sandboxRunning}
@@ -413,6 +323,100 @@ export const SettingsDashboard: React.FC = () => {
                     return <span key={idx}>{item.text}</span>;
                   })}
                 </div>
+              </div>
+            )}
+          </section>
+        </div>
+
+        {/* Right Column: Language & Trigger Behaviors */}
+        <div className="settings-col">
+          <section className="settings-card">
+            <h2>Language & Hotkey</h2>
+            <div className="form-group">
+              <label htmlFor="target-lang">Default Target Language</label>
+              <select
+                id="target-lang"
+                value={settings.target_language}
+                onChange={(e) =>
+                  setSettings({ ...settings, target_language: e.target.value })
+                }
+              >
+                <option value="English">English</option>
+                <option value="Indonesian">Indonesian (Bahasa Indonesia)</option>
+                <option value="Spanish">Spanish</option>
+                <option value="Japanese">Japanese</option>
+                <option value="French">French</option>
+                <option value="German">German</option>
+                <option value="Mandarin Chinese">Mandarin Chinese</option>
+                <option value="Portuguese">Portuguese</option>
+                <option value="Korean">Korean</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="global-shortcut">Global Hotkey Shortcut</label>
+              <input
+                id="global-shortcut"
+                type="text"
+                value={settings.global_shortcut}
+                onChange={(e) =>
+                  setSettings({ ...settings, global_shortcut: e.target.value })
+                }
+                placeholder="Alt+G"
+              />
+              <span className="field-hint">
+                Pressing this shortcut anytime grabs current selection and shows Glyphi.
+              </span>
+            </div>
+          </section>
+
+          <section className="settings-card">
+            <h2>Trigger Conditions</h2>
+            <div className="form-checkbox-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={settings.auto_trigger_selection}
+                  onChange={(e) =>
+                    setSettings({ ...settings, auto_trigger_selection: e.target.checked })
+                  }
+                />
+                <div>
+                  <strong>Show widget on text selection</strong>
+                  <p>Pops up the floating widget when text is highlighted anywhere.</p>
+                </div>
+              </label>
+
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={settings.auto_trigger_pause}
+                  onChange={(e) =>
+                    setSettings({ ...settings, auto_trigger_pause: e.target.checked })
+                  }
+                />
+                <div>
+                  <strong>Show widget on typing pause</strong>
+                  <p>Surfaces an unobtrusive trigger pill when you pause typing.</p>
+                </div>
+              </label>
+            </div>
+
+            {settings.auto_trigger_pause && (
+              <div className="form-group range-group">
+                <label>
+                  Pause delay: <span>{settings.pause_delay_ms / 1000}s</span>
+                </label>
+                <input
+                  type="range"
+                  min="800"
+                  max="3000"
+                  step="200"
+                  value={settings.pause_delay_ms}
+                  onChange={(e) =>
+                    setSettings({ ...settings, pause_delay_ms: Number(e.target.value) })
+                  }
+                />
               </div>
             )}
           </section>

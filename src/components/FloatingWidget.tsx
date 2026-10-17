@@ -36,6 +36,10 @@ export const FloatingWidget: React.FC = () => {
     overrideLang?: string;
   } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const bodyContentRef = useRef<HTMLDivElement>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
+  const footerRef = useRef<HTMLDivElement>(null);
 
   const enterPillMode = () => {
     setMode("pill");
@@ -45,10 +49,39 @@ export const FloatingWidget: React.FC = () => {
     invoke("resize_floating_widget", { width: 340, height: 44 });
   };
 
-  const enterPreviewMode = (width = 440, height = 320) => {
+  const enterPreviewMode = (width = 440, height = 116) => {
     setMode("preview");
     invoke("resize_floating_widget", { width, height });
   };
+
+  // Dynamically compute and adjust floating window height to hug content
+  useEffect(() => {
+    if (mode !== "preview") return;
+
+    if (loading) {
+      invoke("resize_floating_widget", { width: 440, height: 116 });
+      return;
+    }
+
+    const frameId = requestAnimationFrame(() => {
+      const headerH = headerRef.current?.offsetHeight ?? 42;
+      const footerH = footerRef.current?.offsetHeight ?? 0;
+      const bodyPadding = 24;
+
+      let contentH = 40;
+      if (error && errorRef.current) {
+        contentH = errorRef.current.scrollHeight;
+      } else if (bodyContentRef.current) {
+        contentH = bodyContentRef.current.scrollHeight;
+      }
+
+      const totalH = headerH + contentH + footerH + bodyPadding;
+      const clampedH = Math.min(Math.max(totalH, error ? 140 : 155), 480);
+      invoke("resize_floating_widget", { width: 440, height: Math.round(clampedH) });
+    });
+
+    return () => cancelAnimationFrame(frameId);
+  }, [mode, loading, error, response, viewTab]);
 
   // Load configured default target language
   useEffect(() => {
@@ -109,11 +142,11 @@ export const FloatingWidget: React.FC = () => {
 
     if (!textToProcess) {
       setError("Please select text first.");
-      enterPreviewMode(420, 240);
+      enterPreviewMode(440, 150);
       return;
     }
 
-    enterPreviewMode(440, 320);
+    enterPreviewMode(440, 116);
     setLoading(true);
     setError(null);
 
@@ -290,7 +323,7 @@ export const FloatingWidget: React.FC = () => {
   // Preview Mode
   return (
     <div className="floating-card-container">
-      <div className="card-header">
+      <div className="card-header" ref={headerRef}>
         <div className="card-title">
           <img src="/app-icon.svg" className="card-brand-logo" alt="Glyphi" />
           <span>
@@ -385,7 +418,7 @@ export const FloatingWidget: React.FC = () => {
         )}
 
         {error && (
-          <div className="card-error-box">
+          <div className="card-error-box" ref={errorRef}>
             <div className="error-box-header">
               <p className="error-title">Request Issue</p>
               {lastAction && (
@@ -404,7 +437,7 @@ export const FloatingWidget: React.FC = () => {
         )}
 
         {!loading && !error && response && (
-          <div className="card-content-area">
+          <div className="card-content-area" ref={bodyContentRef}>
             {response.action === "translate" ? (
               viewTab === "diff" ? (
                 <div className="source-preview">
@@ -442,7 +475,7 @@ export const FloatingWidget: React.FC = () => {
       </div>
 
       {response && !loading && (
-        <div className="card-footer">
+        <div className="card-footer" ref={footerRef}>
           <div className="footer-left">
             <button type="button" className="btn secondary sm" onClick={handleCopyAll}>
               {copied ? "Copied" : "Copy All"}
