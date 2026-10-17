@@ -130,9 +130,57 @@ pub fn start_global_listener(app: AppHandle, settings: Arc<Mutex<AppSettings>>) 
 
 pub fn show_widget_at(app: &AppHandle, x: f64, y: f64, trigger_type: &str, text: String) {
     if let Some(window) = app.get_webview_window("floating") {
-        // Position window slightly below and to the right of the cursor
-        let target_x = (x as i32 + 12).max(10);
-        let target_y = (y as i32 + 16).max(10);
+        // Query monitor geometry for screen boundary clamping
+        let (monitor_x, monitor_y, monitor_w, monitor_h, scale_factor) =
+            if let Ok(Some(monitor)) = window.current_monitor() {
+                let pos = monitor.position();
+                let size = monitor.size();
+                (
+                    pos.x,
+                    pos.y,
+                    size.width as i32,
+                    size.height as i32,
+                    monitor.scale_factor(),
+                )
+            } else {
+                (0, 0, 1920, 1080, 1.0)
+            };
+
+        let logical_w = 370.0;
+        let logical_h = 44.0;
+        let physical_w = (logical_w * scale_factor) as i32;
+        let physical_h = (logical_h * scale_factor) as i32;
+        let margin = (16.0 * scale_factor) as i32;
+
+        let cur_x = x as i32;
+        let cur_y = y as i32;
+
+        // Default position: slightly below and right of cursor
+        let mut target_x = cur_x + (12.0 * scale_factor) as i32;
+        let mut target_y = cur_y + (16.0 * scale_factor) as i32;
+
+        let monitor_right = monitor_x + monitor_w;
+        let monitor_bottom = monitor_y + monitor_h;
+
+        // Prevent crossing right edge: flip to left of cursor or clamp
+        if target_x + physical_w > monitor_right - margin {
+            target_x = cur_x - physical_w - (8.0 * scale_factor) as i32;
+            if target_x < monitor_x + margin {
+                target_x = monitor_right - physical_w - margin;
+            }
+        }
+
+        // Prevent crossing bottom edge: flip above cursor or clamp
+        if target_y + physical_h > monitor_bottom - margin {
+            target_y = cur_y - physical_h - (12.0 * scale_factor) as i32;
+            if target_y < monitor_y + margin {
+                target_y = monitor_bottom - physical_h - margin;
+            }
+        }
+
+        // Final boundary clamp
+        target_x = target_x.max(monitor_x + margin).min(monitor_right - physical_w - margin);
+        target_y = target_y.max(monitor_y + margin).min(monitor_bottom - physical_h - margin);
 
         let _ = window.set_position(Position::Physical(PhysicalPosition {
             x: target_x,

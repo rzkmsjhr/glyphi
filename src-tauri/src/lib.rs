@@ -10,7 +10,7 @@ use config::{load_settings, save_settings as persist_settings};
 use listener::{show_widget_at, start_global_listener};
 use models::{AppSettings, ProcessTextRequest, ProcessTextResponse};
 use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, LogicalSize, Manager, Size, State};
+use tauri::{AppHandle, LogicalSize, Manager, PhysicalPosition, Position, Size, State};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 pub struct AppState {
@@ -84,10 +84,51 @@ fn hide_floating_widget(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 fn resize_floating_widget(app: AppHandle, width: u32, height: u32) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("floating") {
+        let logical_w = width as f64;
+        let logical_h = height as f64;
+
         let _ = window.set_size(Size::Logical(LogicalSize {
-            width: width as f64,
-            height: height as f64,
+            width: logical_w,
+            height: logical_h,
         }));
+
+        // Adjust position so that expanding near screen edges does not get cut off
+        if let Ok(Some(monitor)) = window.current_monitor() {
+            let scale = monitor.scale_factor();
+            let screen_pos = monitor.position();
+            let screen_size = monitor.size();
+
+            let monitor_x = screen_pos.x;
+            let monitor_y = screen_pos.y;
+            let monitor_right = monitor_x + screen_size.width as i32;
+            let monitor_bottom = monitor_y + screen_size.height as i32;
+
+            let physical_w = (logical_w * scale) as i32;
+            let physical_h = (logical_h * scale) as i32;
+            let margin = (16.0 * scale) as i32;
+
+            if let Ok(cur_pos) = window.outer_position() {
+                let mut new_x = cur_pos.x;
+                let mut new_y = cur_pos.y;
+
+                if new_x + physical_w > monitor_right - margin {
+                    new_x = monitor_right - physical_w - margin;
+                }
+                if new_y + physical_h > monitor_bottom - margin {
+                    new_y = monitor_bottom - physical_h - margin;
+                }
+
+                new_x = new_x.max(monitor_x + margin);
+                new_y = new_y.max(monitor_y + margin);
+
+                if new_x != cur_pos.x || new_y != cur_pos.y {
+                    let _ = window.set_position(Position::Physical(PhysicalPosition {
+                        x: new_x,
+                        y: new_y,
+                    }));
+                }
+            }
+        }
     }
     Ok(())
 }
@@ -100,6 +141,17 @@ pub fn run() {
             let handle = app.handle().clone();
             let initial_settings = load_settings(&handle);
             let settings_arc = Arc::new(Mutex::new(initial_settings.clone()));
+
+            // Explicitly set the window icon for taskbar and titlebar
+            if let Some(main_window) = app.get_webview_window("main") {
+                let icon_bytes = include_bytes!("../icons/128x128.png");
+                if let Ok(img) = image::load_from_memory(icon_bytes) {
+                    let rgba = img.to_rgba8();
+                    let (w, h) = rgba.dimensions();
+                    let tauri_img = tauri::image::Image::new_owned(rgba.into_raw(), w, h);
+                    let _ = main_window.set_icon(tauri_img);
+                }
+            }
 
             app.manage(AppState {
                 settings: settings_arc.clone(),
