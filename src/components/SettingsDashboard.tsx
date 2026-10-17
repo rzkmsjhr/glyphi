@@ -109,7 +109,7 @@ export const SettingsDashboard: React.FC = () => {
     <div className="settings-wrapper">
       <header className="settings-header">
         <div className="header-brand">
-          <div className="brand-badge">G</div>
+          <img src="/app-icon.svg" className="brand-badge-img" alt="Glyphi Logo" />
           <div>
             <h1>Glyphi</h1>
             <p className="subtitle">System-wide AI Writing, Grammar, and Translation Assistant</p>
