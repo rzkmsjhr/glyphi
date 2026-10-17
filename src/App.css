@@ -1,14 +1,14 @@
 /* Global Reset and Typography */
 :root,
 [data-theme="dark"] {
-  --bg-primary: #0b0f17;
-  --bg-surface: #131926;
-  --bg-surface-elevated: #1c2436;
-  --border-color: #232f45;
-  --border-hover: #364869;
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --bg-primary: #121316;
+  --bg-surface: #1a1b1e;
+  --bg-surface-elevated: #242529;
+  --border-color: #2e3036;
+  --border-hover: #454750;
+  --text-primary: #f4f4f6;
+  --text-secondary: #a0a2aa;
+  --text-muted: #71737d;
   --accent: #3b82f6;
   --accent-hover: #2563eb;
   --accent-text: #60a5fa;
@@ -18,10 +18,10 @@
   --diff-insert-text: #34d399;
   --diff-delete-bg: rgba(244, 63, 94, 0.18);
   --diff-delete-text: #fb7185;
-  --pill-bg: #111726;
-  --pill-border: #232f45;
-  --card-header-bg: rgba(17, 23, 38, 0.7);
-  --card-footer-bg: rgba(17, 23, 38, 0.5);
+  --pill-bg: #1a1b1e;
+  --pill-border: #2e3036;
+  --card-header-bg: rgba(26, 27, 30, 0.85);
+  --card-footer-bg: rgba(26, 27, 30, 0.65);
   color-scheme: dark;
 
   font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -955,4 +955,156 @@ textarea:focus {
   gap: 10px;
   background-color: var(--bg-primary);
   color: var(--text-secondary);
+}
+
+/* Settings Window Close Button */
+.settings-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.settings-close-btn:hover {
+  background-color: rgba(244, 63, 94, 0.18);
+  border-color: rgba(244, 63, 94, 0.4);
+  color: #fb7185;
+}
+
+.settings-close-btn:active {
+  transform: scale(0.96);
+}
+
+/* Close App / Minimize to Tray Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: modalFadeIn 0.15s ease;
+}
+
+.modal-dialog {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal-title-group h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.modal-body {
+  padding: 16px 18px;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.modal-intro {
+  margin-bottom: 14px;
+  color: var(--text-secondary);
+}
+
+.modal-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.modal-option-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+  width: 100%;
+}
+
+.modal-option-card:hover {
+  border-color: var(--accent);
+  background-color: var(--accent-subtle);
+}
+
+.modal-option-icon {
+  font-size: 18px;
+  line-height: 1;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.modal-option-text strong {
+  display: block;
+  font-size: 13px;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.modal-option-text span {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.35;
+  display: block;
+}
+
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 18px;
+  background-color: var(--bg-surface-elevated);
+  border-top: 1px solid var(--border-color);
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }

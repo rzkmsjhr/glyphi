@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { emit } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { AppSettings, ProcessTextResponse } from "../types";
 import { TARGET_LANGUAGES } from "./FloatingWidget";
 
@@ -11,6 +12,7 @@ export const SettingsDashboard: React.FC = () => {
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [showCloseModal, setShowCloseModal] = useState(false);
 
   // Interactive Sandbox states
   const [sandboxText, setSandboxText] = useState(
@@ -23,6 +25,55 @@ export const SettingsDashboard: React.FC = () => {
   useEffect(() => {
     loadSettings();
   }, []);
+
+  // Intercept OS window close request (Windows X, Mac red circle, Linux close)
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    getCurrentWindow()
+      .onCloseRequested((event) => {
+        event.preventDefault();
+        setShowCloseModal(true);
+      })
+      .then((fn) => {
+        unlisten = fn;
+      })
+      .catch((err) => {
+        console.error("Failed to register window close listener:", err);
+      });
+
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
+
+  // Support Escape key to dismiss the close modal
+  useEffect(() => {
+    if (!showCloseModal) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowCloseModal(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showCloseModal]);
+
+  const handleMinimizeToTray = async () => {
+    try {
+      setShowCloseModal(false);
+      await invoke("minimize_to_tray");
+    } catch (err) {
+      console.error("Failed to minimize to tray:", err);
+    }
+  };
+
+  const handleExitApp = async () => {
+    try {
+      await invoke("exit_app");
+    } catch (err) {
+      console.error("Failed to exit application:", err);
+    }
+  };
 
   const loadSettings = async () => {
     try {
@@ -143,6 +194,18 @@ export const SettingsDashboard: React.FC = () => {
           {saveSuccess && <span className="save-status-badge">Settings saved</span>}
           <button className="btn primary" onClick={handleSave} disabled={saving}>
             {saving ? "Saving..." : "Save Preferences"}
+          </button>
+          <button
+            type="button"
+            className="settings-close-btn"
+            onClick={() => setShowCloseModal(true)}
+            title="Close Settings"
+            aria-label="Close Settings"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="2" y1="2" x2="12" y2="12" />
+              <line x1="12" y1="2" x2="2" y2="12" />
+            </svg>
           </button>
         </div>
       </header>
@@ -460,6 +523,73 @@ export const SettingsDashboard: React.FC = () => {
           </section>
         </div>
       </div>
+
+      {showCloseModal && (
+        <div className="modal-overlay" onClick={() => setShowCloseModal(false)}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title-group">
+                <img src="/app-icon.svg" className="card-brand-logo" alt="Glyphi" />
+                <h3>Close Glyphi Settings</h3>
+              </div>
+              <button
+                type="button"
+                className="card-close-btn"
+                onClick={() => setShowCloseModal(false)}
+                title="Dismiss (Esc)"
+                aria-label="Dismiss (Esc)"
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <line x1="1" y1="1" x2="11" y2="11" />
+                  <line x1="11" y1="1" x2="1" y2="11" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <p className="modal-intro">
+                Would you like to keep Glyphi running in your system tray or close the application completely?
+              </p>
+
+              <div className="modal-options-list">
+                <button
+                  type="button"
+                  className="modal-option-card"
+                  onClick={handleMinimizeToTray}
+                >
+                  <span className="modal-option-icon">📥</span>
+                  <div className="modal-option-text">
+                    <strong>Minimize to System Tray (Recommended)</strong>
+                    <span>Glyphi continues running in the background. Your shortcuts and text tools stay active.</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="modal-option-card"
+                  onClick={handleExitApp}
+                >
+                  <span className="modal-option-icon">✕</span>
+                  <div className="modal-option-text">
+                    <strong>Quit Application Entirely</strong>
+                    <span>Closes Glyphi completely and stops all background hotkeys and processes.</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn secondary sm"
+                onClick={() => setShowCloseModal(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

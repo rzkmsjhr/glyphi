@@ -10,7 +10,11 @@ use config::{load_settings, save_settings as persist_settings};
 use listener::{show_widget_at, start_global_listener};
 use models::{AppSettings, ProcessTextRequest, ProcessTextResponse};
 use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, Position, Size, State};
+use tauri::{
+    menu::{Menu, MenuItem},
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, Position, Size, State,
+};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 pub struct AppState {
@@ -137,6 +141,19 @@ fn resize_floating_widget(app: AppHandle, width: u32, height: u32) -> Result<(),
     Ok(())
 }
 
+#[tauri::command]
+fn minimize_to_tray(app: AppHandle) -> Result<(), String> {
+    if let Some(main_window) = app.get_webview_window("main") {
+        let _ = main_window.hide();
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn exit_app(app: AppHandle) {
+    app.exit(0);
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -223,6 +240,53 @@ pub fn run() {
                 let _ = app.global_shortcut().register(shortcut);
             }
 
+            // Setup System Tray
+            let show_item = MenuItem::with_id(app, "show", "Open Settings", true, None::<&str>)?;
+            let quit_item = MenuItem::with_id(app, "quit", "Quit Glyphi", true, None::<&str>)?;
+            let tray_menu = Menu::with_items(app, &[&show_item, &quit_item])?;
+
+            let tray_icon = app
+                .default_window_icon()
+                .cloned()
+                .unwrap_or_else(|| {
+                    let icon_bytes = include_bytes!("../icons/32x32.png");
+                    let img = image::load_from_memory(icon_bytes).unwrap().to_rgba8();
+                    let (w, h) = img.dimensions();
+                    tauri::image::Image::new_owned(img.into_raw(), w, h)
+                });
+
+            let _tray = TrayIconBuilder::new()
+                .icon(tray_icon)
+                .menu(&tray_menu)
+                .show_menu_on_left_click(false)
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "show" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                    "quit" => {
+                        app.exit(0);
+                    }
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                })
+                .build(app)?;
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -235,6 +299,8 @@ pub fn run() {
             grab_selected_text,
             hide_floating_widget,
             resize_floating_widget,
+            minimize_to_tray,
+            exit_app,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Glyphi application");
