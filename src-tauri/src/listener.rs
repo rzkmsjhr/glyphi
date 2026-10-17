@@ -7,6 +7,8 @@ use std::thread;
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, Position};
 
+static LAST_WIDGET_SHOW: Mutex<Option<Instant>> = Mutex::new(None);
+
 pub struct ListenerState {
     pub enabled: AtomicBool,
     pub settings: Arc<Mutex<AppSettings>>,
@@ -84,10 +86,51 @@ pub fn start_global_listener(app: AppHandle, settings: Arc<Mutex<AppSettings>>) 
                     let mut pos = mouse_pos.lock().unwrap();
                     *pos = (x, y);
                 }
-                EventType::ButtonPress(Button::Left) => {
-                    let (x, y) = *mouse_pos.lock().unwrap();
-                    let mut down = mouse_down_pos.lock().unwrap();
-                    *down = (x, y);
+                EventType::ButtonPress(button) => {
+                    if button == Button::Left {
+                        let (x, y) = *mouse_pos.lock().unwrap();
+                        let mut down = mouse_down_pos.lock().unwrap();
+                        *down = (x, y);
+                    }
+
+                    if button == Button::Left || button == Button::Right {
+                        let (cur_x, cur_y) = *mouse_pos.lock().unwrap();
+                        let px = cur_x as i32;
+                        let py = cur_y as i32;
+
+                        if let Some(win) = app.get_webview_window("floating") {
+                            if win.is_visible().unwrap_or(false) {
+                                let recently_shown = {
+                                    let show_lock = LAST_WIDGET_SHOW.lock().unwrap();
+                                    if let Some(t) = *show_lock {
+                                        t.elapsed() < Duration::from_millis(250)
+                                    } else {
+                                        false
+                                    }
+                                };
+
+                                if !recently_shown {
+                                    if let (Ok(win_pos), Ok(win_size)) = (win.outer_position(), win.outer_size()) {
+                                        let wx = win_pos.x;
+                                        let wy = win_pos.y;
+                                        let ww = win_size.width as i32;
+                                        let wh = win_size.height as i32;
+
+                                        // Allow 8px around, and up to 260px below for OS select popups
+                                        let is_inside = px >= wx - 8
+                                            && px <= wx + ww + 8
+                                            && py >= wy - 8
+                                            && py <= wy + wh + 260;
+
+                                        if !is_inside {
+                                            let _ = win.hide();
+                                            let _ = app.emit("dismiss-floating", ());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
                 EventType::ButtonRelease(Button::Left) => {
                     let auto_selection = {
@@ -251,5 +294,6 @@ pub fn show_widget_at(app: &AppHandle, x: f64, y: f64, trigger_type: &str, text:
         );
 
         let _ = window.show();
+        *LAST_WIDGET_SHOW.lock().unwrap() = Some(Instant::now());
     }
 }

@@ -66,6 +66,10 @@ export const FloatingWidget: React.FC = () => {
       enterPillMode();
     });
 
+    const unlistenDismiss = listen("dismiss-floating", () => {
+      enterPillMode();
+    });
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         handleDismiss();
@@ -75,6 +79,7 @@ export const FloatingWidget: React.FC = () => {
 
     return () => {
       unlistenPromise.then((unlisten) => unlisten());
+      unlistenDismiss.then((unlisten) => unlisten());
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, []);
@@ -116,7 +121,6 @@ export const FloatingWidget: React.FC = () => {
           action,
           text: textToProcess,
           target_language: action === "translate" ? langToUse : null,
-          targetLanguage: action === "translate" ? langToUse : null,
           custom_prompt: null,
         },
       });
