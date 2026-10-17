@@ -4,6 +4,10 @@ fn default_theme() -> String {
     "dark".to_string()
 }
 
+fn default_true() -> bool {
+    true
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppSettings {
     pub provider: String, // "gemini" | "chatgpt"
@@ -21,6 +25,8 @@ pub struct AppSettings {
     pub grammar_prompt: String,
     pub translate_prompt: String,
     pub rewrite_prompt: String,
+    #[serde(default = "default_true")]
+    pub show_romanization: bool,
 }
 
 impl Default for AppSettings {
@@ -40,6 +46,7 @@ impl Default for AppSettings {
             grammar_prompt: "You are a professional editor. Correct all grammar, spelling, punctuation, and phrasing errors. Preserve original tone and formatting. Return ONLY the corrected text.".to_string(),
             translate_prompt: "You are an expert translator. Translate the text into {target_language}. Maintain natural idioms, context, and tone. Return ONLY the translated text.".to_string(),
             rewrite_prompt: "Rewrite the following text to be concise, polished, and professional. Return ONLY the rewritten text.".to_string(),
+            show_romanization: true,
         }
     }
 }

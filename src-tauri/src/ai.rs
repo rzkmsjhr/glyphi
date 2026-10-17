@@ -48,7 +48,7 @@ impl AiService {
             .target_language
             .as_deref()
             .unwrap_or(&settings.target_language);
-        let needs_romaji = is_trans && is_phonetic_target_lang(target_lang);
+        let needs_romaji = is_trans && settings.show_romanization && is_phonetic_target_lang(target_lang);
 
         let (system_prompt, user_content) = match req.action.as_str() {
             "grammar" => {

@@ -13,6 +13,7 @@ export interface AppSettings {
   grammar_prompt: string;
   translate_prompt: string;
   rewrite_prompt: string;
+  show_romanization?: boolean;
 }
 
 export interface DiffItem {

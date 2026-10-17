@@ -74,6 +74,9 @@ export const SettingsDashboard: React.FC = () => {
       if (!data.theme) {
         data.theme = (localStorage.getItem("glyphi-theme") as "dark" | "light") || "dark";
       }
+      if (data.show_romanization === undefined) {
+        data.show_romanization = true;
+      }
       document.documentElement.setAttribute("data-theme", data.theme);
       localStorage.setItem("glyphi-theme", data.theme);
       setSettings(data);
@@ -441,6 +444,22 @@ export const SettingsDashboard: React.FC = () => {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="form-checkbox-group" style={{ marginTop: "6px" }}>
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={settings.show_romanization ?? true}
+                  onChange={(e) =>
+                    setSettings({ ...settings, show_romanization: e.target.checked })
+                  }
+                />
+                <div>
+                  <strong>Show Romanization / Romaji</strong>
+                  <p>Displays phonetic readings (Romaji, Pinyin, Romaja) below translations for Japanese, Thai, Chinese, Arabic, and Korean.</p>
+                </div>
+              </label>
             </div>
 
             <div className="form-group">
