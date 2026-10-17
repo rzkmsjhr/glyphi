@@ -158,6 +158,14 @@ fn exit_app(app: AppHandle) {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if window.label() == "main" {
+                    api.prevent_close();
+                    let _ = window.emit("open-close-modal", ());
+                }
+            }
+        })
         .setup(|app| {
             let handle = app.handle().clone();
             let initial_settings = load_settings(&handle);

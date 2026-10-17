@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { emit } from "@tauri-apps/api/event";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { emit, listen } from "@tauri-apps/api/event";
 import { AppSettings, ProcessTextResponse } from "../types";
 import { TARGET_LANGUAGES } from "./FloatingWidget";
 
@@ -26,23 +25,14 @@ export const SettingsDashboard: React.FC = () => {
     loadSettings();
   }, []);
 
-  // Intercept OS window close request (Windows X, Mac red circle, Linux close)
+  // Listen for native OS window close button clicks intercepted by the Rust event loop
   useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    getCurrentWindow()
-      .onCloseRequested((event) => {
-        event.preventDefault();
-        setShowCloseModal(true);
-      })
-      .then((fn) => {
-        unlisten = fn;
-      })
-      .catch((err) => {
-        console.error("Failed to register window close listener:", err);
-      });
+    const unlistenPromise = listen("open-close-modal", () => {
+      setShowCloseModal(true);
+    });
 
     return () => {
-      if (unlisten) unlisten();
+      unlistenPromise.then((unlisten) => unlisten());
     };
   }, []);
 
@@ -194,18 +184,6 @@ export const SettingsDashboard: React.FC = () => {
           {saveSuccess && <span className="save-status-badge">Settings saved</span>}
           <button className="btn primary" onClick={handleSave} disabled={saving}>
             {saving ? "Saving..." : "Save Preferences"}
-          </button>
-          <button
-            type="button"
-            className="settings-close-btn"
-            onClick={() => setShowCloseModal(true)}
-            title="Close Settings"
-            aria-label="Close Settings"
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <line x1="2" y1="2" x2="12" y2="12" />
-              <line x1="12" y1="2" x2="2" y2="12" />
-            </svg>
           </button>
         </div>
       </header>

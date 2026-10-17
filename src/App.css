@@ -957,31 +957,6 @@ textarea:focus {
   color: var(--text-secondary);
 }
 
-/* Settings Window Close Button */
-.settings-close-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 6px;
-  background-color: var(--bg-surface-elevated);
-  border: 1px solid var(--border-color);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.15s ease;
-  padding: 0;
-}
-
-.settings-close-btn:hover {
-  background-color: rgba(244, 63, 94, 0.18);
-  border-color: rgba(244, 63, 94, 0.4);
-  color: #fb7185;
-}
-
-.settings-close-btn:active {
-  transform: scale(0.96);
-}
 
 /* Close App / Minimize to Tray Modal */
 .modal-overlay {
