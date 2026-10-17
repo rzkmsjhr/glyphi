@@ -41,7 +41,9 @@ impl Default for AppSettings {
 pub struct ProcessTextRequest {
     pub action: String, // "grammar" | "translate" | "rewrite"
     pub text: String,
+    #[serde(alias = "targetLanguage")]
     pub target_language: Option<String>,
+    #[serde(alias = "customPrompt")]
     pub custom_prompt: Option<String>,
 }
 

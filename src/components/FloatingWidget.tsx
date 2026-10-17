@@ -1,11 +1,31 @@
 import React, { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { ProcessTextResponse, TriggerEventPayload } from "../types";
+import { AppSettings, ProcessTextResponse, TriggerEventPayload } from "../types";
+
+export const TARGET_LANGUAGES = [
+  "Indonesian",
+  "English",
+  "Spanish",
+  "Japanese",
+  "French",
+  "German",
+  "Mandarin Chinese",
+  "Korean",
+  "Portuguese",
+  "Italian",
+  "Arabic",
+  "Russian",
+  "Dutch",
+  "Vietnamese",
+  "Thai",
+];
 
 export const FloatingWidget: React.FC = () => {
   const [mode, setMode] = useState<"pill" | "preview">("pill");
   const [selectedText, setSelectedText] = useState("");
+  const [targetLanguage, setTargetLanguage] = useState("Indonesian");
+  const [showTranslatePicker, setShowTranslatePicker] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [response, setResponse] = useState<ProcessTextResponse | null>(null);
@@ -15,6 +35,7 @@ export const FloatingWidget: React.FC = () => {
 
   const enterPillMode = () => {
     setMode("pill");
+    setShowTranslatePicker(false);
     setResponse(null);
     setError(null);
     invoke("resize_floating_widget", { width: 370, height: 44 });
@@ -24,6 +45,17 @@ export const FloatingWidget: React.FC = () => {
     setMode("preview");
     invoke("resize_floating_widget", { width, height });
   };
+
+  // Load configured default target language
+  useEffect(() => {
+    invoke<AppSettings>("get_settings")
+      .then((s) => {
+        if (s && s.target_language) {
+          setTargetLanguage(s.target_language);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Listen for trigger events from the Rust background listener
   useEffect(() => {
@@ -47,7 +79,10 @@ export const FloatingWidget: React.FC = () => {
     };
   }, []);
 
-  const handleAction = async (action: "grammar" | "translate" | "rewrite") => {
+  const handleAction = async (
+    action: "grammar" | "translate" | "rewrite",
+    overrideLang?: string
+  ) => {
     let textToProcess = selectedText.trim();
 
     // If text was empty, try to grab from clipboard
@@ -73,13 +108,16 @@ export const FloatingWidget: React.FC = () => {
     setLoading(true);
     setError(null);
 
+    const langToUse = overrideLang || targetLanguage || "Indonesian";
+
     try {
       const res = await invoke<ProcessTextResponse>("process_text", {
         req: {
           action,
           text: textToProcess,
-          targetLanguage: null,
-          customPrompt: null,
+          target_language: action === "translate" ? langToUse : null,
+          targetLanguage: action === "translate" ? langToUse : null,
+          custom_prompt: null,
         },
       });
       setResponse(res);
@@ -112,6 +150,71 @@ export const FloatingWidget: React.FC = () => {
   };
 
   if (mode === "pill") {
+    if (showTranslatePicker) {
+      return (
+        <div className="floating-pill-container" ref={containerRef}>
+          <button
+            type="button"
+            className="pill-back-btn"
+            onClick={() => {
+              setShowTranslatePicker(false);
+              invoke("resize_floating_widget", { width: 370, height: 44 });
+            }}
+            title="Back to actions"
+            aria-label="Back to actions"
+          >
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="10 13 5 8 10 3" />
+            </svg>
+          </button>
+
+          <span className="pill-translate-label">To:</span>
+
+          <select
+            className="pill-lang-select"
+            value={targetLanguage}
+            onChange={(e) => setTargetLanguage(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                handleAction("translate", targetLanguage);
+              }
+            }}
+            autoFocus
+          >
+            {TARGET_LANGUAGES.map((lang) => (
+              <option key={lang} value={lang}>
+                {lang}
+              </option>
+            ))}
+          </select>
+
+          <button
+            type="button"
+            className="pill-btn primary"
+            onClick={() => handleAction("translate", targetLanguage)}
+            title="Translate to selected language"
+          >
+            Translate
+          </button>
+
+          <div className="pill-divider" />
+
+          <button
+            type="button"
+            className="pill-close-btn"
+            onClick={handleDismiss}
+            title="Dismiss (Esc)"
+            aria-label="Dismiss (Esc)"
+          >
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="1" y1="1" x2="11" y2="11" />
+              <line x1="11" y1="1" x2="1" y2="11" />
+            </svg>
+          </button>
+        </div>
+      );
+    }
+
     return (
       <div className="floating-pill-container" ref={containerRef}>
         <div className="pill-brand">
@@ -133,10 +236,13 @@ export const FloatingWidget: React.FC = () => {
           <button
             type="button"
             className="pill-btn"
-            onClick={() => handleAction("translate")}
-            title="Translate Text"
+            onClick={() => {
+              setShowTranslatePicker(true);
+              invoke("resize_floating_widget", { width: 390, height: 44 });
+            }}
+            title="Select target language and translate"
           >
-            Translate
+            Translate ▾
           </button>
           <button
             type="button"
@@ -183,6 +289,28 @@ export const FloatingWidget: React.FC = () => {
           </span>
         </div>
         <div className="card-header-actions">
+          {response && response.action === "translate" && (
+            <div className="card-lang-selector">
+              <span className="card-lang-label">To:</span>
+              <select
+                className="card-lang-select"
+                value={targetLanguage}
+                onChange={(e) => {
+                  const newLang = e.target.value;
+                  setTargetLanguage(newLang);
+                  handleAction("translate", newLang);
+                }}
+                title="Switch target translation language"
+              >
+                {TARGET_LANGUAGES.map((lang) => (
+                  <option key={lang} value={lang}>
+                    {lang}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {response && (
             <div className="view-toggle">
               <button
