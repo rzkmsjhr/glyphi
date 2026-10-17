@@ -83,6 +83,9 @@ export const SettingsDashboard: React.FC = () => {
       if (data.show_romanization === undefined) {
         data.show_romanization = true;
       }
+      if (data.autostart === undefined) {
+        data.autostart = true;
+      }
       document.documentElement.setAttribute("data-theme", data.theme);
       localStorage.setItem("glyphi-theme", data.theme);
       setSettings(data);
@@ -463,6 +466,20 @@ export const SettingsDashboard: React.FC = () => {
                 <div>
                   <strong>Show Romanization / Romaji</strong>
                   <p>Displays phonetic readings (Romaji, Pinyin, Romaja) below translations for Japanese, Thai, Chinese, Arabic, and Korean.</p>
+                </div>
+              </label>
+
+              <label className="checkbox-label" style={{ marginTop: "10px" }}>
+                <input
+                  type="checkbox"
+                  checked={settings.autostart ?? true}
+                  onChange={(e) =>
+                    setSettings({ ...settings, autostart: e.target.checked })
+                  }
+                />
+                <div>
+                  <strong>Launch at system startup</strong>
+                  <p>Runs Glyphi automatically in the background when your computer turns on.</p>
                 </div>
               </label>
             </div>

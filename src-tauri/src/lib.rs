@@ -15,6 +15,7 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, Position, Size, State,
 };
+use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 pub struct AppState {
@@ -36,6 +37,15 @@ fn save_settings(
     persist_settings(&app, &settings)?;
     let mut current = state.settings.lock().unwrap();
     let theme = settings.theme.clone();
+
+    // Synchronize OS startup registration
+    let autolaunch = app.autolaunch();
+    if settings.autostart {
+        let _ = autolaunch.enable();
+    } else {
+        let _ = autolaunch.disable();
+    }
+
     *current = settings;
     let _ = app.emit("theme-changed", theme);
     Ok(())
@@ -158,6 +168,10 @@ fn exit_app(app: AppHandle) {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec!["--autostart"]),
+        ))
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 if window.label() == "main" {
@@ -170,6 +184,22 @@ pub fn run() {
             let handle = app.handle().clone();
             let initial_settings = load_settings(&handle);
             let settings_arc = Arc::new(Mutex::new(initial_settings.clone()));
+
+            // Synchronize system autostart state with initial settings
+            let autolaunch = app.autolaunch();
+            if initial_settings.autostart {
+                let _ = autolaunch.enable();
+            } else {
+                let _ = autolaunch.disable();
+            }
+
+            // If started at OS boot via autostart argument, start silently minimized to tray
+            let is_autostart_boot = std::env::args().any(|arg| arg == "--autostart");
+            if is_autostart_boot {
+                if let Some(main_window) = app.get_webview_window("main") {
+                    let _ = main_window.hide();
+                }
+            }
 
             // Explicitly set the window icon for taskbar and titlebar (high-res 256x256)
             if let Some(main_window) = app.get_webview_window("main") {

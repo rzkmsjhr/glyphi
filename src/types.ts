@@ -14,6 +14,7 @@ export interface AppSettings {
   translate_prompt: string;
   rewrite_prompt: string;
   show_romanization?: boolean;
+  autostart?: boolean;
 }
 
 export interface DiffItem {

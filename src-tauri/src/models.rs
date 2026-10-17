@@ -27,6 +27,8 @@ pub struct AppSettings {
     pub rewrite_prompt: String,
     #[serde(default = "default_true")]
     pub show_romanization: bool,
+    #[serde(default = "default_true")]
+    pub autostart: bool,
 }
 
 impl Default for AppSettings {
@@ -47,6 +49,7 @@ impl Default for AppSettings {
             translate_prompt: "You are an expert translator. Translate the text into {target_language}. Maintain natural idioms, context, and tone. Return ONLY the translated text.".to_string(),
             rewrite_prompt: "Rewrite the following text to be concise, polished, and professional. Return ONLY the rewritten text.".to_string(),
             show_romanization: true,
+            autostart: true,
         }
     }
 }
