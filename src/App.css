@@ -29,34 +29,49 @@
   padding: 0;
 }
 
-body {
+html,
+body,
+#root {
   margin: 0;
   padding: 0;
-  background-color: transparent;
+  width: 100%;
+  height: 100%;
+  overflow: hidden !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  background-color: transparent !important;
   user-select: none;
+}
+
+::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 /* ==========================================================================
    Floating Pill Styles
    ========================================================================== */
 .floating-pill-container {
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
-  gap: 8px;
-  background-color: #16181f;
-  border: 1px solid #2e3240;
-  border-radius: 24px;
-  padding: 4px 8px 4px 10px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
-  width: fit-content;
+  justify-content: space-between;
+  background-color: #15171e;
+  border: 1px solid #2b2f3d;
+  border-radius: 22px;
+  padding: 0 8px 0 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .pill-brand {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding-right: 6px;
-  border-right: 1px solid var(--border-color);
+  flex-shrink: 0;
 }
 
 .brand-dot {
@@ -64,19 +79,29 @@ body {
   height: 7px;
   border-radius: 50%;
   background-color: var(--accent);
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.4);
 }
 
 .brand-label {
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
   color: var(--text-secondary);
+}
+
+.pill-divider {
+  width: 1px;
+  height: 16px;
+  background-color: var(--border-color);
+  margin: 0 2px;
+  flex-shrink: 0;
 }
 
 .pill-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
+  flex-shrink: 0;
 }
 
 .pill-btn {
@@ -85,10 +110,12 @@ body {
   color: var(--text-primary);
   font-size: 12px;
   font-weight: 500;
-  padding: 4px 10px;
-  border-radius: 14px;
+  padding: 5px 9px;
+  border-radius: 12px;
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+  line-height: 1;
 }
 
 .pill-btn:hover {
@@ -96,37 +123,55 @@ body {
 }
 
 .pill-btn.primary {
-  background-color: rgba(245, 158, 11, 0.15);
+  background-color: rgba(245, 158, 11, 0.14);
   color: var(--accent);
 }
 
 .pill-btn.primary:hover {
-  background-color: rgba(245, 158, 11, 0.25);
+  background-color: rgba(245, 158, 11, 0.24);
 }
 
-.pill-btn.close-btn {
-  padding: 4px 7px;
-  color: var(--text-muted);
-  font-size: 11px;
+.pill-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+  margin-left: 2px;
+  padding: 0;
 }
 
-.pill-btn.close-btn:hover {
-  color: var(--text-primary);
+.pill-close-btn:hover {
+  background-color: rgba(244, 63, 94, 0.22);
+  border-color: rgba(244, 63, 94, 0.45);
+  color: #fb7185;
+}
+
+.pill-close-btn:active {
+  transform: scale(0.95);
 }
 
 /* ==========================================================================
    Floating Preview Card Styles
    ========================================================================== */
 .floating-card-container {
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .card-header {
@@ -136,6 +181,27 @@ body {
   padding: 10px 14px;
   border-bottom: 1px solid var(--border-color);
   background-color: rgba(22, 24, 31, 0.6);
+}
+
+.card-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.card-close-btn:hover {
+  background-color: rgba(244, 63, 94, 0.2);
+  border-color: rgba(244, 63, 94, 0.35);
+  color: #fb7185;
 }
 
 .card-title {

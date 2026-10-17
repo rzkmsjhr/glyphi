@@ -13,14 +13,25 @@ export const FloatingWidget: React.FC = () => {
   const [viewTab, setViewTab] = useState<"diff" | "clean">("diff");
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const enterPillMode = () => {
+    setMode("pill");
+    setResponse(null);
+    setError(null);
+    invoke("resize_floating_widget", { width: 370, height: 44 });
+  };
+
+  const enterPreviewMode = (width = 440, height = 320) => {
+    setMode("preview");
+    invoke("resize_floating_widget", { width, height });
+  };
+
   // Listen for trigger events from the Rust background listener
   useEffect(() => {
+    enterPillMode();
+
     const unlistenPromise = listen<TriggerEventPayload>("trigger-pill", (event) => {
       setSelectedText(event.payload.text);
-      setResponse(null);
-      setError(null);
-      setMode("pill");
-      invoke("resize_floating_widget", { width: 340, height: 50 });
+      enterPillMode();
     });
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -54,15 +65,13 @@ export const FloatingWidget: React.FC = () => {
 
     if (!textToProcess) {
       setError("Please select text first.");
-      setMode("preview");
-      invoke("resize_floating_widget", { width: 420, height: 260 });
+      enterPreviewMode(420, 240);
       return;
     }
 
-    setMode("preview");
+    enterPreviewMode(440, 320);
     setLoading(true);
     setError(null);
-    invoke("resize_floating_widget", { width: 440, height: 340 });
 
     try {
       const res = await invoke<ProcessTextResponse>("process_text", {
@@ -98,9 +107,7 @@ export const FloatingWidget: React.FC = () => {
   };
 
   const handleDismiss = async () => {
-    setMode("pill");
-    setResponse(null);
-    setError(null);
+    enterPillMode();
     await invoke("hide_floating_widget");
   };
 
@@ -111,15 +118,20 @@ export const FloatingWidget: React.FC = () => {
           <span className="brand-dot" />
           <span className="brand-label">Glyphi</span>
         </div>
+
+        <div className="pill-divider" />
+
         <div className="pill-actions">
           <button
+            type="button"
             className="pill-btn primary"
             onClick={() => handleAction("grammar")}
-            title="Check Grammar & Spelling"
+            title="Check Grammar and Spelling"
           >
             Grammar
           </button>
           <button
+            type="button"
             className="pill-btn"
             onClick={() => handleAction("translate")}
             title="Translate Text"
@@ -127,20 +139,29 @@ export const FloatingWidget: React.FC = () => {
             Translate
           </button>
           <button
+            type="button"
             className="pill-btn"
             onClick={() => handleAction("rewrite")}
-            title="Polish Tone & Phrasing"
+            title="Polish Tone and Phrasing"
           >
             Polish
           </button>
-          <button
-            className="pill-btn close-btn"
-            onClick={handleDismiss}
-            title="Dismiss (Esc)"
-          >
-            ✕
-          </button>
         </div>
+
+        <div className="pill-divider" />
+
+        <button
+          type="button"
+          className="pill-close-btn"
+          onClick={handleDismiss}
+          title="Dismiss (Esc)"
+          aria-label="Dismiss (Esc)"
+        >
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <line x1="1" y1="1" x2="11" y2="11" />
+            <line x1="11" y1="1" x2="1" y2="11" />
+          </svg>
+        </button>
       </div>
     );
   }
@@ -165,12 +186,14 @@ export const FloatingWidget: React.FC = () => {
           {response && (
             <div className="view-toggle">
               <button
+                type="button"
                 className={`toggle-btn ${viewTab === "diff" ? "active" : ""}`}
                 onClick={() => setViewTab("diff")}
               >
                 Changes
               </button>
               <button
+                type="button"
                 className={`toggle-btn ${viewTab === "clean" ? "active" : ""}`}
                 onClick={() => setViewTab("clean")}
               >
@@ -178,8 +201,17 @@ export const FloatingWidget: React.FC = () => {
               </button>
             </div>
           )}
-          <button className="card-close-btn" onClick={handleDismiss} title="Close (Esc)">
-            ✕
+          <button
+            type="button"
+            className="card-close-btn"
+            onClick={handleDismiss}
+            title="Close (Esc)"
+            aria-label="Close (Esc)"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="1" y1="1" x2="11" y2="11" />
+              <line x1="11" y1="1" x2="1" y2="11" />
+            </svg>
           </button>
         </div>
       </div>
@@ -231,15 +263,15 @@ export const FloatingWidget: React.FC = () => {
       {response && !loading && (
         <div className="card-footer">
           <div className="footer-left">
-            <button className="btn secondary" onClick={handleCopyAll}>
+            <button type="button" className="btn secondary sm" onClick={handleCopyAll}>
               {copied ? "Copied" : "Copy All"}
             </button>
           </div>
           <div className="footer-right">
-            <button className="btn outline" onClick={handleDismiss}>
+            <button type="button" className="btn outline sm" onClick={handleDismiss}>
               Discard
             </button>
-            <button className="btn primary" onClick={handleApply}>
+            <button type="button" className="btn primary sm" onClick={handleApply}>
               Apply Changes
             </button>
           </div>

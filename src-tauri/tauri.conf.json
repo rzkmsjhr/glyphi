@@ -22,8 +22,8 @@
       {
         "label": "floating",
         "title": "Glyphi Widget",
-        "width": 360,
-        "height": 56,
+        "width": 370,
+        "height": 46,
         "resizable": false,
         "decorations": false,
         "transparent": true,

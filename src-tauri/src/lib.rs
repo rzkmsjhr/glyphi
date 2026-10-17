@@ -10,7 +10,7 @@ use config::{load_settings, save_settings as persist_settings};
 use listener::{show_widget_at, start_global_listener};
 use models::{AppSettings, ProcessTextRequest, ProcessTextResponse};
 use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, Manager, PhysicalSize, Size, State};
+use tauri::{AppHandle, LogicalSize, Manager, Size, State};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 pub struct AppState {
@@ -84,7 +84,10 @@ fn hide_floating_widget(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 fn resize_floating_widget(app: AppHandle, width: u32, height: u32) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("floating") {
-        let _ = window.set_size(Size::Physical(PhysicalSize { width, height }));
+        let _ = window.set_size(Size::Logical(LogicalSize {
+            width: width as f64,
+            height: height as f64,
+        }));
     }
     Ok(())
 }
