@@ -374,6 +374,19 @@ body,
   user-select: text;
 }
 
+.source-preview {
+  opacity: 0.9;
+}
+
+.view-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
 .card-footer {
   display: flex;
   align-items: center;

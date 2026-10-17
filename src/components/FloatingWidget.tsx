@@ -113,6 +113,13 @@ export const FloatingWidget: React.FC = () => {
     setLoading(true);
     setError(null);
 
+    // Default to clean output for translation, diff for grammar/polish
+    if (action === "translate") {
+      setViewTab("clean");
+    } else {
+      setViewTab("diff");
+    }
+
     const langToUse = overrideLang || targetLanguage || "Indonesian";
 
     try {
@@ -315,7 +322,24 @@ export const FloatingWidget: React.FC = () => {
             </div>
           )}
 
-          {response && (
+          {response && response.action === "translate" ? (
+            <div className="view-toggle">
+              <button
+                type="button"
+                className={`toggle-btn ${viewTab === "clean" ? "active" : ""}`}
+                onClick={() => setViewTab("clean")}
+              >
+                Translation
+              </button>
+              <button
+                type="button"
+                className={`toggle-btn ${viewTab === "diff" ? "active" : ""}`}
+                onClick={() => setViewTab("diff")}
+              >
+                Original
+              </button>
+            </div>
+          ) : response ? (
             <div className="view-toggle">
               <button
                 type="button"
@@ -332,7 +356,7 @@ export const FloatingWidget: React.FC = () => {
                 Output
               </button>
             </div>
-          )}
+          ) : null}
           <button
             type="button"
             className="card-close-btn"
@@ -365,7 +389,16 @@ export const FloatingWidget: React.FC = () => {
 
         {!loading && !error && response && (
           <div className="card-content-area">
-            {viewTab === "diff" ? (
+            {response.action === "translate" ? (
+              viewTab === "diff" ? (
+                <div className="source-preview">
+                  <div className="view-section-label">Original Source Text:</div>
+                  <div className="clean-output-view">{response.original}</div>
+                </div>
+              ) : (
+                <div className="clean-output-view">{response.result}</div>
+              )
+            ) : viewTab === "diff" ? (
               <div className="diff-view">
                 {response.diff.map((item, idx) => {
                   if (item.op === "insert") {
