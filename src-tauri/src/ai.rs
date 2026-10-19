@@ -93,13 +93,21 @@ impl AiService {
 
         let result = match settings.provider.as_str() {
             "gemini" => {
+                let key = settings.gemini_api_key.trim();
+                if key.is_empty() {
+                    return Err("Gemini API key is missing. Please enter your API key and click 'Save Preferences'.".to_string());
+                }
                 let full_prompt = format!("{}\n\nText:\n{}", system_prompt, user_content);
-                self.call_gemini(&settings.gemini_api_key, &settings.gemini_model, &full_prompt)
+                self.call_gemini(key, &settings.gemini_model, &full_prompt)
                     .await?
             }
             "chatgpt" => {
+                let key = settings.openai_api_key.trim();
+                if key.is_empty() {
+                    return Err("OpenAI API key is missing. Please enter your API key and click 'Save Preferences'.".to_string());
+                }
                 self.call_openai(
-                    &settings.openai_api_key,
+                    key,
                     &settings.openai_model,
                     &system_prompt,
                     &user_content,

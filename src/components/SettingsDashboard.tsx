@@ -129,7 +129,7 @@ export const SettingsDashboard: React.FC = () => {
     setTestResult(null);
 
     const apiKey =
-      settings.provider === "gemini" ? settings.gemini_api_key : settings.openai_api_key;
+      settings.provider === "gemini" ? settings.gemini_api_key.trim() : settings.openai_api_key.trim();
     const model =
       settings.provider === "gemini" ? settings.gemini_model : settings.openai_model;
 
@@ -140,6 +140,16 @@ export const SettingsDashboard: React.FC = () => {
         model,
       });
       setTestResult({ ok: true, msg: "Connection successful." });
+      // Auto-save verified preferences
+      const cleanSettings = {
+        ...settings,
+        gemini_api_key: settings.gemini_api_key.trim(),
+        openai_api_key: settings.openai_api_key.trim(),
+      };
+      setSettings(cleanSettings);
+      await invoke("save_settings", { settings: cleanSettings });
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2500);
     } catch (err: any) {
       setTestResult({
         ok: false,
@@ -157,6 +167,16 @@ export const SettingsDashboard: React.FC = () => {
     setSandboxResponse(null);
 
     try {
+      // Auto-save current settings so sandbox immediately uses any entered API key / model / provider
+      if (settings) {
+        const cleanSettings = {
+          ...settings,
+          gemini_api_key: settings.gemini_api_key.trim(),
+          openai_api_key: settings.openai_api_key.trim(),
+        };
+        await invoke("save_settings", { settings: cleanSettings });
+      }
+
       const res = await invoke<ProcessTextResponse>("process_text", {
         req: {
           action,

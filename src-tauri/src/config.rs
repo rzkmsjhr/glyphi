@@ -29,6 +29,12 @@ pub fn load_settings(app: &AppHandle) -> AppSettings {
                     {
                         settings.gemini_model = "gemini-3.5-flash-lite".to_string();
                     }
+                    if settings.rewrite_prompt == "Rewrite the following text to be concise, polished, and professional. Return ONLY the rewritten text." {
+                        settings.rewrite_prompt = "Rewrite the following text in its original language to be concise, polished, and professional. Preserve the original language and tone. Return ONLY the rewritten text.".to_string();
+                    }
+                    if settings.grammar_prompt == "You are a professional editor. Correct all grammar, spelling, punctuation, and phrasing errors. Preserve original tone and formatting. Return ONLY the corrected text." {
+                        settings.grammar_prompt = "You are a professional editor. Correct all grammar, spelling, punctuation, and phrasing errors in the original language of the text. Preserve original language, tone, and formatting. Return ONLY the corrected text.".to_string();
+                    }
                     return settings;
                 }
             }

@@ -18,10 +18,17 @@
   --diff-insert-text: #34d399;
   --diff-delete-bg: rgba(244, 63, 94, 0.18);
   --diff-delete-text: #fb7185;
-  --pill-bg: #1a1b1e;
-  --pill-border: #2e3036;
+  --pill-bg: #111215;
+  --pill-border: #262933;
   --card-header-bg: rgba(26, 27, 30, 0.85);
   --card-footer-bg: rgba(26, 27, 30, 0.65);
+  --g-grad-0: #ffffff;
+  --g-grad-25: #fff3dc;
+  --g-grad-65: #fbbf24;
+  --g-grad-100: #d97706;
+  --nib-grad-0: #f59e0b;
+  --nib-grad-100: #fbbf24;
+  --nib-slit: #101217;
   color-scheme: dark;
 
   font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -54,6 +61,13 @@
   --pill-border: #cbd5e1;
   --card-header-bg: rgba(241, 245, 249, 0.95);
   --card-footer-bg: rgba(241, 245, 249, 0.85);
+  --g-grad-0: #d97706;
+  --g-grad-25: #b45309;
+  --g-grad-65: #92400e;
+  --g-grad-100: #78350f;
+  --nib-grad-0: #d97706;
+  --nib-grad-100: #f59e0b;
+  --nib-slit: #ffffff;
   color-scheme: light;
 }
 
@@ -75,57 +89,139 @@ body,
   border: none !important;
   outline: none !important;
   box-shadow: none !important;
+  overflow: hidden !important;
   user-select: none;
+}
+
+::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 /* ==========================================================================
    Floating Pill Styles
    ========================================================================== */
 .floating-pill-container {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  height: 44px;
+  box-sizing: border-box;
   background-color: var(--pill-bg);
   border: 1px solid var(--pill-border);
-  border-radius: 22px;
-  padding: 0 8px 0 10px;
-  box-shadow: none !important;
-  box-sizing: border-box;
+  display: flex;
+  align-items: center;
   overflow: hidden;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  user-select: none;
+  box-shadow: none !important;
+  transition: width 0.24s cubic-bezier(0.16, 1, 0.3, 1),
+              border-radius 0.24s cubic-bezier(0.16, 1, 0.3, 1),
+              background-color 0.2s ease,
+              border-color 0.2s ease,
+              transform 0.15s ease;
 }
 
-.pill-brand {
+.floating-pill-container.collapsed {
+  width: 44px;
+  border-radius: 50%;
+  padding: 0;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: none !important;
+}
+
+.floating-pill-container.collapsed:hover {
+  border-color: rgba(245, 158, 11, 0.75);
+  box-shadow: none !important;
+  transform: scale(1.05);
+}
+
+.floating-pill-container.collapsed:active {
+  transform: scale(0.95);
+}
+
+[data-theme="light"] .floating-pill-container.collapsed {
+  box-shadow: none !important;
+}
+
+[data-theme="light"] .floating-pill-container.collapsed:hover {
+  border-color: rgba(217, 119, 6, 0.75);
+  box-shadow: none !important;
+}
+
+.floating-pill-container.expanded {
+  width: 340px;
+  max-width: 100%;
+  border-radius: 22px;
+  padding: 0 8px 0 10px;
+  justify-content: space-between;
+  cursor: default;
+  box-shadow: none !important;
+}
+
+[data-theme="light"] .floating-pill-container.expanded {
+  box-shadow: none !important;
+}
+
+.pill-brand-btn {
+  background: transparent;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  outline: none;
   flex-shrink: 0;
-  padding: 0 2px;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  transition: transform 0.15s ease;
+}
+
+.floating-pill-container.expanded .pill-brand-btn {
+  width: 24px;
+  height: 24px;
+  cursor: default;
+  padding: 0;
 }
 
 .pill-logo {
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
-  object-fit: contain;
   display: block;
+  flex-shrink: 0;
+  transition: transform 0.15s ease, filter 0.15s ease;
 }
 
-.brand-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background-color: var(--accent);
-  box-shadow: 0 0 6px rgba(59, 130, 246, 0.4);
+.floating-pill-container.collapsed:hover .pill-logo {
+  filter: drop-shadow(0 2px 6px rgba(245, 158, 11, 0.45));
 }
 
-.brand-label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  color: var(--text-secondary);
+.pill-expanded-content {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  justify-content: space-between;
+  overflow: hidden;
+  animation: pillFadeSlideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.pill-translate-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 100%;
+  animation: pillFadeSlideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pillFadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .pill-divider {

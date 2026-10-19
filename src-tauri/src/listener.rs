@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
-use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, Position};
+use tauri::{AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, Position, Size};
 
 static LAST_WIDGET_SHOW: Mutex<Option<Instant>> = Mutex::new(None);
 
@@ -242,7 +242,7 @@ pub fn show_widget_at(app: &AppHandle, x: f64, y: f64, trigger_type: &str, text:
                 (0, 0, 1920, 1080, 1.0)
             };
 
-        let logical_w = 340.0;
+        let logical_w = 44.0;
         let logical_h = 44.0;
         let physical_w = (logical_w * scale_factor) as i32;
         let physical_h = (logical_h * scale_factor) as i32;
@@ -258,11 +258,12 @@ pub fn show_widget_at(app: &AppHandle, x: f64, y: f64, trigger_type: &str, text:
         let monitor_right = monitor_x + monitor_w;
         let monitor_bottom = monitor_y + monitor_h;
 
-        // Prevent crossing right edge: flip to left of cursor or clamp
-        if target_x + physical_w > monitor_right - margin {
+        // Prevent crossing right edge: account for full expanded pill width (340.0) so hover stays on-screen
+        let expanded_physical_w = (340.0 * scale_factor) as i32;
+        if target_x + expanded_physical_w > monitor_right - margin {
             target_x = cur_x - physical_w - (8.0 * scale_factor) as i32;
-            if target_x < monitor_x + margin {
-                target_x = monitor_right - physical_w - margin;
+            if target_x + expanded_physical_w > monitor_right - margin {
+                target_x = monitor_right - expanded_physical_w - margin;
             }
         }
 
@@ -277,6 +278,11 @@ pub fn show_widget_at(app: &AppHandle, x: f64, y: f64, trigger_type: &str, text:
         // Final boundary clamp
         target_x = target_x.max(monitor_x + margin).min(monitor_right - physical_w - margin);
         target_y = target_y.max(monitor_y + margin).min(monitor_bottom - physical_h - margin);
+
+        let _ = window.set_size(Size::Logical(LogicalSize {
+            width: logical_w,
+            height: logical_h,
+        }));
 
         let _ = window.set_position(Position::Physical(PhysicalPosition {
             x: target_x,

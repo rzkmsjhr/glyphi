@@ -45,9 +45,9 @@ impl Default for AppSettings {
             auto_trigger_pause: false, // off by default until user opts in
             pause_delay_ms: 1500,
             global_shortcut: "Alt+G".to_string(),
-            grammar_prompt: "You are a professional editor. Correct all grammar, spelling, punctuation, and phrasing errors. Preserve original tone and formatting. Return ONLY the corrected text.".to_string(),
+            grammar_prompt: "You are a professional editor. Correct all grammar, spelling, punctuation, and phrasing errors in the original language of the text. Preserve original language, tone, and formatting. Return ONLY the corrected text.".to_string(),
             translate_prompt: "You are an expert translator. Translate the text into {target_language}. Maintain natural idioms, context, and tone. Return ONLY the translated text.".to_string(),
-            rewrite_prompt: "Rewrite the following text to be concise, polished, and professional. Return ONLY the rewritten text.".to_string(),
+            rewrite_prompt: "Rewrite the following text in its original language to be concise, polished, and professional. Preserve the original language and tone. Return ONLY the rewritten text.".to_string(),
             show_romanization: true,
             autostart: true,
         }

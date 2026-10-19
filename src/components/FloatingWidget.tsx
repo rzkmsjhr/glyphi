@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { AppSettings, ProcessTextResponse, TriggerEventPayload } from "../types";
+import { GlyphiGIcon } from "./GlyphiGIcon";
 
 export const TARGET_LANGUAGES = [
   "English",
@@ -33,6 +34,7 @@ export const getRomajiLabel = (lang: string): string => {
 
 export const FloatingWidget: React.FC = () => {
   const [mode, setMode] = useState<"pill" | "preview">("pill");
+  const [isExpanded, setIsExpanded] = useState(false);
   const [selectedText, setSelectedText] = useState("");
   const [targetLanguage, setTargetLanguage] = useState("English");
   const [showTranslatePicker, setShowTranslatePicker] = useState(false);
@@ -51,26 +53,92 @@ export const FloatingWidget: React.FC = () => {
   const bodyContentRef = useRef<HTMLDivElement>(null);
   const errorRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
+  const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const animFrameRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const resizeWidget = (width: number, height: number) => {
+    invoke("resize_floating_widget", { width, height }).catch(() => {});
+  };
 
   const enterPillMode = () => {
+    if (collapseTimerRef.current) {
+      clearTimeout(collapseTimerRef.current);
+      collapseTimerRef.current = null;
+    }
+    if (animFrameRef.current) {
+      clearTimeout(animFrameRef.current);
+      animFrameRef.current = null;
+    }
     setMode("pill");
+    setIsExpanded(false);
     setShowTranslatePicker(false);
     setResponse(null);
     setError(null);
-    invoke("resize_floating_widget", { width: 340, height: 44 });
+    resizeWidget(44, 44);
   };
 
   const enterPreviewMode = (width = 440, height = 116) => {
+    if (collapseTimerRef.current) {
+      clearTimeout(collapseTimerRef.current);
+      collapseTimerRef.current = null;
+    }
+    if (animFrameRef.current) {
+      clearTimeout(animFrameRef.current);
+      animFrameRef.current = null;
+    }
     setMode("preview");
-    invoke("resize_floating_widget", { width, height });
+    resizeWidget(width, height);
   };
+
+  const handleMouseEnter = () => {
+    if (collapseTimerRef.current) {
+      clearTimeout(collapseTimerRef.current);
+      collapseTimerRef.current = null;
+    }
+    if (animFrameRef.current) {
+      clearTimeout(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+    if (mode === "pill" && !isExpanded) {
+      resizeWidget(340, 44);
+      setIsExpanded(true);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (mode !== "pill" || showTranslatePicker) return;
+
+    if (collapseTimerRef.current) {
+      clearTimeout(collapseTimerRef.current);
+    }
+
+    collapseTimerRef.current = setTimeout(() => {
+      setIsExpanded(false);
+      animFrameRef.current = setTimeout(() => {
+        resizeWidget(44, 44);
+      }, 200);
+    }, 280);
+  };
+
+  const handleCircleClick = () => {
+    if (!isExpanded) {
+      handleMouseEnter();
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (collapseTimerRef.current) clearTimeout(collapseTimerRef.current);
+      if (animFrameRef.current) clearTimeout(animFrameRef.current);
+    };
+  }, []);
 
   // Dynamically compute and adjust floating window height to hug content
   useEffect(() => {
     if (mode !== "preview") return;
 
     if (loading) {
-      invoke("resize_floating_widget", { width: 440, height: 116 });
+      resizeWidget(440, 116);
       return;
     }
 
@@ -89,7 +157,7 @@ export const FloatingWidget: React.FC = () => {
       const totalH = headerH + contentH + footerH + bodyPadding;
       const minH = error ? 140 : response?.transliteration ? 180 : 155;
       const clampedH = Math.min(Math.max(totalH, minH), 520);
-      invoke("resize_floating_widget", { width: 440, height: Math.round(clampedH) });
+      resizeWidget(440, Math.round(clampedH));
     });
 
     return () => cancelAnimationFrame(frameId);
@@ -233,123 +301,136 @@ export const FloatingWidget: React.FC = () => {
   };
 
   if (mode === "pill") {
-    if (showTranslatePicker) {
-      return (
-        <div className="floating-pill-container" ref={containerRef}>
-          <button
-            type="button"
-            className="pill-back-btn"
-            onClick={() => {
-              setShowTranslatePicker(false);
-              invoke("resize_floating_widget", { width: 340, height: 44 });
-            }}
-            title="Back to actions"
-            aria-label="Back to actions"
-          >
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="10 13 5 8 10 3" />
-            </svg>
-          </button>
-
-          <span className="pill-translate-label">To:</span>
-
-          <select
-            className="pill-lang-select"
-            value={targetLanguage}
-            onChange={(e) => setTargetLanguage(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                handleAction("translate", targetLanguage);
-              }
-            }}
-            autoFocus
-          >
-            {TARGET_LANGUAGES.map((lang) => (
-              <option key={lang} value={lang}>
-                {lang}
-              </option>
-            ))}
-          </select>
-
-          <button
-            type="button"
-            className="pill-btn primary"
-            onClick={() => handleAction("translate", targetLanguage)}
-            title="Translate to selected language"
-          >
-            Translate
-          </button>
-
-          <div className="pill-divider" />
-
-          <button
-            type="button"
-            className="pill-close-btn"
-            onClick={handleDismiss}
-            title="Dismiss (Esc)"
-            aria-label="Dismiss (Esc)"
-          >
-            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <line x1="1" y1="1" x2="11" y2="11" />
-              <line x1="11" y1="1" x2="1" y2="11" />
-            </svg>
-          </button>
-        </div>
-      );
-    }
-
     return (
-      <div className="floating-pill-container" ref={containerRef}>
-        <div className="pill-brand" title="Glyphi">
-          <img src="/app-icon.svg" className="pill-logo" alt="Glyphi" />
-        </div>
+      <div
+        className={`floating-pill-container ${isExpanded ? "expanded" : "collapsed"}`}
+        ref={containerRef}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        {showTranslatePicker ? (
+          <div className="pill-translate-content">
+            <button
+              type="button"
+              className="pill-back-btn"
+              onClick={() => {
+                setShowTranslatePicker(false);
+              }}
+              title="Back to actions"
+              aria-label="Back to actions"
+            >
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="10 13 5 8 10 3" />
+              </svg>
+            </button>
 
-        <div className="pill-divider" />
+            <span className="pill-translate-label">To:</span>
 
-        <div className="pill-actions">
-          <button
-            type="button"
-            className="pill-btn"
-            onClick={() => handleAction("grammar")}
-            title="Check Grammar and Spelling"
-          >
-            Grammar
-          </button>
-          <button
-            type="button"
-            className="pill-btn"
-            onClick={() => {
-              setShowTranslatePicker(true);
-              invoke("resize_floating_widget", { width: 340, height: 44 });
-            }}
-            title="Select target language and translate"
-          >
-            Translate ▾
-          </button>
-          <button
-            type="button"
-            className="pill-btn"
-            onClick={() => handleAction("rewrite")}
-            title="Polish Tone and Phrasing"
-          >
-            Polish
-          </button>
-        </div>
+            <select
+              className="pill-lang-select"
+              value={targetLanguage}
+              onChange={(e) => setTargetLanguage(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleAction("translate", targetLanguage);
+                }
+              }}
+              autoFocus
+            >
+              {TARGET_LANGUAGES.map((lang) => (
+                <option key={lang} value={lang}>
+                  {lang}
+                </option>
+              ))}
+            </select>
 
-        <div className="pill-divider" />
+            <button
+              type="button"
+              className="pill-btn primary"
+              onClick={() => handleAction("translate", targetLanguage)}
+              title="Translate to selected language"
+            >
+              Translate
+            </button>
 
-        <button
-          type="button"
-          className="pill-close-btn"
-          onClick={handleDismiss}
-          title="Dismiss (Esc)"
-          aria-label="Dismiss (Esc)"
-        >
-          <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <line x1="1" y1="1" x2="11" y2="11" />
-            <line x1="11" y1="1" x2="1" y2="11" />
-          </svg>
-        </button>
+            <div className="pill-divider" />
+
+            <button
+              type="button"
+              className="pill-close-btn"
+              onClick={handleDismiss}
+              title="Dismiss (Esc)"
+              aria-label="Dismiss (Esc)"
+            >
+              <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <line x1="1" y1="1" x2="11" y2="11" />
+                <line x1="11" y1="1" x2="1" y2="11" />
+              </svg>
+            </button>
+          </div>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="pill-brand-btn"
+              onClick={handleCircleClick}
+              title={isExpanded ? "Glyphi" : "Glyphi: Click or hover to open"}
+              aria-label="Glyphi"
+            >
+              <GlyphiGIcon size={22} className="pill-logo" />
+            </button>
+
+            {isExpanded && (
+              <div className="pill-expanded-content">
+                <div className="pill-divider" />
+
+                <div className="pill-actions">
+                  <button
+                    type="button"
+                    className="pill-btn"
+                    onClick={() => handleAction("grammar")}
+                    title="Check Grammar and Spelling"
+                  >
+                    Grammar
+                  </button>
+                  <button
+                    type="button"
+                    className="pill-btn"
+                    onClick={() => {
+                      setShowTranslatePicker(true);
+                    }}
+                    title="Select target language and translate"
+                  >
+                    Translate ▾
+                  </button>
+                  <button
+                    type="button"
+                    className="pill-btn"
+                    onClick={() => handleAction("rewrite")}
+                    title="Polish Tone and Phrasing"
+                  >
+                    Polish
+                  </button>
+                </div>
+
+                <div className="pill-divider" />
+
+                <button
+                  type="button"
+                  className="pill-close-btn"
+                  onClick={handleDismiss}
+                  title="Dismiss (Esc)"
+                  aria-label="Dismiss (Esc)"
+                >
+                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <line x1="1" y1="1" x2="11" y2="11" />
+                    <line x1="11" y1="1" x2="1" y2="11" />
+                  </svg>
+                </button>
+              </div>
+            )}
+          </>
+        )}
       </div>
     );
   }
@@ -359,7 +440,7 @@ export const FloatingWidget: React.FC = () => {
     <div className="floating-card-container">
       <div className="card-header" ref={headerRef}>
         <div className="card-title">
-          <img src="/app-icon.svg" className="card-brand-logo" alt="Glyphi" />
+          <GlyphiGIcon size={18} className="card-brand-logo" />
           <span>
             {response
               ? response.action === "grammar"
