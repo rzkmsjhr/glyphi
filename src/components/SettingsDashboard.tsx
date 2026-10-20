@@ -1,16 +1,56 @@
 import React, { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { emit, listen } from "@tauri-apps/api/event";
-import { AppSettings, ProcessTextResponse } from "../types";
+import { AppSettings, DEFAULT_SETTINGS, ProcessTextResponse } from "../types";
 import { TARGET_LANGUAGES, getRomajiLabel } from "./FloatingWidget";
+
+const getSafeLocalTheme = (): "dark" | "light" => {
+  try {
+    const t = localStorage.getItem("glyphi-theme");
+    return t === "light" ? "light" : "dark";
+  } catch {
+    return "dark";
+  }
+};
+
+const setSafeLocalTheme = (theme: "dark" | "light") => {
+  try {
+    localStorage.setItem("glyphi-theme", theme);
+  } catch {
+    // ignore
+  }
+};
+
+const normalizeSettings = (data?: Partial<AppSettings> | null): AppSettings => {
+  const s: AppSettings = {
+    ...DEFAULT_SETTINGS,
+    ...(data || {}),
+  };
+  if (
+    !s.gemini_model ||
+    s.gemini_model === "gemini-3.8-flash" ||
+    s.gemini_model === "gemini-2.0-flash" ||
+    s.gemini_model === "gemini-2.5-flash" ||
+    s.gemini_model === "gemini-1.5-flash"
+  ) {
+    s.gemini_model = "gemini-3.5-flash-lite";
+  }
+  if (!s.theme) {
+    s.theme = getSafeLocalTheme();
+  }
+  return s;
+};
 
 export const SettingsDashboard: React.FC = () => {
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
 
   // Interactive Sandbox states
@@ -66,31 +106,30 @@ export const SettingsDashboard: React.FC = () => {
   };
 
   const loadSettings = async () => {
+    setLoadError(null);
     try {
-      const data = await invoke<AppSettings>("get_settings");
-      if (
-        !data.gemini_model ||
-        data.gemini_model === "gemini-3.8-flash" ||
-        data.gemini_model === "gemini-2.0-flash" ||
-        data.gemini_model === "gemini-2.5-flash" ||
-        data.gemini_model === "gemini-1.5-flash"
-      ) {
-        data.gemini_model = "gemini-3.5-flash-lite";
-      }
-      if (!data.theme) {
-        data.theme = (localStorage.getItem("glyphi-theme") as "dark" | "light") || "dark";
-      }
-      if (data.show_romanization === undefined) {
-        data.show_romanization = true;
-      }
-      if (data.autostart === undefined) {
-        data.autostart = true;
-      }
-      document.documentElement.setAttribute("data-theme", data.theme);
-      localStorage.setItem("glyphi-theme", data.theme);
-      setSettings(data);
-    } catch (err) {
-      console.error("Failed to load settings:", err);
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout loading settings from backend")), 3000)
+      );
+      const data = await Promise.race([
+        invoke<AppSettings>("get_settings"),
+        timeoutPromise,
+      ]);
+      const normalized = normalizeSettings(data);
+      document.documentElement.setAttribute("data-theme", normalized.theme);
+      setSafeLocalTheme(normalized.theme);
+      setSettings(normalized);
+    } catch (err: any) {
+      console.warn("Failed or timed out loading backend settings, using defaults:", err);
+      const fallback = normalizeSettings(null);
+      document.documentElement.setAttribute("data-theme", fallback.theme);
+      setSafeLocalTheme(fallback.theme);
+      setSettings(fallback);
+      setLoadError(
+        typeof err === "string"
+          ? err
+          : err?.message || "Could not connect to settings storage. Default settings loaded."
+      );
     }
   };
 
@@ -99,12 +138,40 @@ export const SettingsDashboard: React.FC = () => {
     const updated = { ...settings, theme: newTheme };
     setSettings(updated);
     document.documentElement.setAttribute("data-theme", newTheme);
-    localStorage.setItem("glyphi-theme", newTheme);
+    setSafeLocalTheme(newTheme);
     try {
       await emit("theme-changed", newTheme);
       await invoke("save_settings", { settings: updated });
     } catch (err) {
       console.error("Failed to sync theme:", err);
+    }
+  };
+
+  const handleResetDefaults = async () => {
+    if (!window.confirm("Are you sure you want to reset all preferences to default values?")) {
+      return;
+    }
+    setResetting(true);
+    setResetSuccess(false);
+    try {
+      let defaults: AppSettings;
+      try {
+        defaults = await invoke<AppSettings>("reset_settings");
+      } catch {
+        defaults = DEFAULT_SETTINGS;
+        await invoke("save_settings", { settings: defaults });
+      }
+      const normalized = normalizeSettings(defaults);
+      setSettings(normalized);
+      document.documentElement.setAttribute("data-theme", normalized.theme);
+      setSafeLocalTheme(normalized.theme);
+      setLoadError(null);
+      setResetSuccess(true);
+      setTimeout(() => setResetSuccess(false), 2500);
+    } catch (err) {
+      console.error("Failed to reset settings:", err);
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -198,6 +265,18 @@ export const SettingsDashboard: React.FC = () => {
       <div className="dashboard-loading">
         <div className="loading-indicator" />
         <p>Loading Glyphi preferences...</p>
+        <button
+          className="btn secondary sm"
+          style={{ marginTop: 12 }}
+          onClick={() => {
+            const fallback = normalizeSettings(null);
+            document.documentElement.setAttribute("data-theme", fallback.theme);
+            setSafeLocalTheme(fallback.theme);
+            setSettings(fallback);
+          }}
+        >
+          Use Defaults
+        </button>
       </div>
     );
   }
@@ -214,11 +293,38 @@ export const SettingsDashboard: React.FC = () => {
         </div>
         <div className="header-actions">
           {saveSuccess && <span className="save-status-badge">Settings saved</span>}
-          <button className="btn primary" onClick={handleSave} disabled={saving}>
+          {resetSuccess && <span className="save-status-badge">Reset to defaults</span>}
+          <button
+            className="btn secondary"
+            onClick={handleResetDefaults}
+            disabled={saving || resetting}
+            title="Reset all preferences to default values"
+          >
+            {resetting ? "Resetting..." : "Reset Defaults"}
+          </button>
+          <button className="btn primary" onClick={handleSave} disabled={saving || resetting}>
             {saving ? "Saving..." : "Save Preferences"}
           </button>
         </div>
       </header>
+
+      {loadError && (
+        <div className="settings-alert-banner">
+          <span>{loadError} Default configuration is active.</span>
+          <div className="settings-alert-actions">
+            <button className="settings-alert-btn" onClick={loadSettings}>
+              Retry
+            </button>
+            <button
+              className="settings-alert-close"
+              onClick={() => setLoadError(null)}
+              title="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="settings-grid">
         {/* Left Column: AI Provider & Live Sandbox */}

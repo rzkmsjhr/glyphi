@@ -165,14 +165,19 @@ export const FloatingWidget: React.FC = () => {
 
   // Load configured default target language and theme
   useEffect(() => {
-    const localTheme = localStorage.getItem("glyphi-theme") || "dark";
+    let localTheme = "dark";
+    try {
+      localTheme = localStorage.getItem("glyphi-theme") || "dark";
+    } catch {}
     document.documentElement.setAttribute("data-theme", localTheme);
 
     invoke<AppSettings>("get_settings")
       .then((s) => {
         if (s && s.theme) {
           document.documentElement.setAttribute("data-theme", s.theme);
-          localStorage.setItem("glyphi-theme", s.theme);
+          try {
+            localStorage.setItem("glyphi-theme", s.theme);
+          } catch {}
         }
         if (s && s.target_language) {
           setTargetLanguage(s.target_language);
@@ -182,7 +187,9 @@ export const FloatingWidget: React.FC = () => {
 
     const unlistenTheme = listen<string>("theme-changed", (event) => {
       document.documentElement.setAttribute("data-theme", event.payload);
-      localStorage.setItem("glyphi-theme", event.payload);
+      try {
+        localStorage.setItem("glyphi-theme", event.payload);
+      } catch {}
     });
 
     return () => {

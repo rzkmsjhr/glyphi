@@ -1,20 +1,12 @@
 use serde::{Deserialize, Serialize};
 
-fn default_theme() -> String {
-    "dark".to_string()
-}
-
-fn default_true() -> bool {
-    true
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct AppSettings {
     pub provider: String, // "gemini" | "chatgpt"
-    #[serde(default = "default_theme")]
     pub theme: String, // "dark" | "light"
     pub gemini_api_key: String,
-    pub gemini_model: String, // e.g. "gemini-2.0-flash", "gemini-1.5-flash"
+    pub gemini_model: String, // e.g. "gemini-3.5-flash-lite", "gemini-2.0-flash"
     pub openai_api_key: String,
     pub openai_model: String, // e.g. "gpt-4o-mini", "gpt-4o"
     pub target_language: String, // e.g. "English", "Indonesian", "Spanish", "Japanese"
@@ -25,9 +17,7 @@ pub struct AppSettings {
     pub grammar_prompt: String,
     pub translate_prompt: String,
     pub rewrite_prompt: String,
-    #[serde(default = "default_true")]
     pub show_romanization: bool,
-    #[serde(default = "default_true")]
     pub autostart: bool,
 }
 

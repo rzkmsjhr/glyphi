@@ -6,7 +6,7 @@ mod models;
 
 use ai::AiService;
 use clipboard::{set_clipboard_text, simulate_copy, simulate_paste};
-use config::{load_settings, save_settings as persist_settings};
+use config::{load_settings, reset_settings as persist_reset_settings, save_settings as persist_settings};
 use listener::{show_widget_at, start_global_listener};
 use models::{AppSettings, ProcessTextRequest, ProcessTextResponse};
 use std::sync::{Arc, Mutex};
@@ -49,6 +49,28 @@ fn save_settings(
     *current = settings;
     let _ = app.emit("theme-changed", theme);
     Ok(())
+}
+
+#[tauri::command]
+fn reset_settings(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<AppSettings, String> {
+    let defaults = persist_reset_settings(&app)?;
+    let mut current = state.settings.lock().unwrap();
+    let theme = defaults.theme.clone();
+
+    // Reset autostart state
+    let autolaunch = app.autolaunch();
+    if defaults.autostart {
+        let _ = autolaunch.enable();
+    } else {
+        let _ = autolaunch.disable();
+    }
+
+    *current = defaults.clone();
+    let _ = app.emit("theme-changed", theme);
+    Ok(defaults)
 }
 
 #[tauri::command]
@@ -330,6 +352,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_settings,
             save_settings,
+            reset_settings,
             test_api_connection,
             process_text,
             apply_replacement,
