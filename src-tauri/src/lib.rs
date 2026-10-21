@@ -5,7 +5,10 @@ mod listener;
 mod models;
 
 use ai::AiService;
-use clipboard::{set_clipboard_text, simulate_copy, simulate_paste};
+use clipboard::{
+    get_clipboard_text, is_terminal_window_active, set_clipboard_text, simulate_copy,
+    simulate_paste,
+};
 use config::{load_settings, reset_settings as persist_reset_settings, save_settings as persist_settings};
 use listener::{show_widget_at, start_global_listener};
 use models::{AppSettings, ProcessTextRequest, ProcessTextResponse};
@@ -110,7 +113,11 @@ fn copy_to_clipboard(text: String) -> Result<(), String> {
 
 #[tauri::command]
 fn grab_selected_text() -> Result<String, String> {
-    simulate_copy()
+    if is_terminal_window_active() {
+        get_clipboard_text()
+    } else {
+        simulate_copy()
+    }
 }
 
 #[tauri::command]
@@ -290,7 +297,11 @@ pub fn run() {
                             if s == &shortcut && event.state() == ShortcutState::Pressed {
                                 let app = handle_clone.clone();
                                 std::thread::spawn(move || {
-                                    let text = simulate_copy().unwrap_or_default();
+                                    let text = if is_terminal_window_active() {
+                                        get_clipboard_text().unwrap_or_default()
+                                    } else {
+                                        simulate_copy().unwrap_or_default()
+                                    };
                                     show_widget_at(&app, 400.0, 300.0, "shortcut", text);
                                 });
                             }

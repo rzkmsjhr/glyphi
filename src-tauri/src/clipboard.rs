@@ -131,8 +131,95 @@ pub fn get_clipboard_sequence() -> u64 {
     0
 }
 
+pub fn is_terminal_class_name(class_name: &str) -> bool {
+    let c = class_name.to_ascii_lowercase();
+    c == "cascadia_hosting_window_class"
+        || c == "consolewindowclass"
+        || c == "mintty"
+        || c == "virtualconsoleclass"
+        || c.contains("putty")
+        || c.contains("kitty")
+        || c.contains("alacritty")
+        || c.contains("wezterm")
+        || c.contains("ghostty")
+        || c.contains("terminal")
+}
+
+pub fn is_terminal_exe_name(path: &str) -> bool {
+    let filename = std::path::Path::new(path)
+        .file_name()
+        .and_then(|f| f.to_str())
+        .unwrap_or(path);
+
+    const TERMINAL_EXES: &[&str] = &[
+        "windowsterminal.exe",
+        "wt.exe",
+        "cmd.exe",
+        "powershell.exe",
+        "pwsh.exe",
+        "conhost.exe",
+        "mintty.exe",
+        "bash.exe",
+        "zsh.exe",
+        "wsl.exe",
+        "wslhost.exe",
+        "alacritty.exe",
+        "wezterm-gui.exe",
+        "wezterm.exe",
+        "kitty.exe",
+        "hyper.exe",
+        "tabby.exe",
+        "warp.exe",
+        "ghostty.exe",
+        "putty.exe",
+        "kitty_portable.exe",
+        "mobaxterm.exe",
+        "termius.exe",
+        "cmder.exe",
+        "conemu.exe",
+        "conemu64.exe",
+        "git-bash.exe",
+        "xshell.exe",
+        "securecrt.exe",
+        "fluentterminal.exe",
+        "terminus.exe",
+    ];
+
+    TERMINAL_EXES.iter().any(|&t| filename.eq_ignore_ascii_case(t))
+}
+
+pub fn is_screenshot_class_name(class_name: &str) -> bool {
+    let c = class_name.to_ascii_lowercase();
+    c.contains("screenclippinghost") || c.contains("snippingtool") || c.contains("snipper")
+}
+
+pub fn is_screenshot_exe_name(path: &str) -> bool {
+    let filename = std::path::Path::new(path)
+        .file_name()
+        .and_then(|f| f.to_str())
+        .unwrap_or(path);
+
+    const SCREENSHOT_EXES: &[&str] = &[
+        "screenclippinghost.exe",
+        "snippingtool.exe",
+        "snippingtoolapp.exe",
+        "lightshot.exe",
+        "greenshot.exe",
+        "sharex.exe",
+        "flameshot.exe",
+    ];
+
+    SCREENSHOT_EXES.iter().any(|&s| filename.eq_ignore_ascii_case(s))
+}
+
 #[cfg(target_os = "windows")]
-pub fn is_screenshot_tool_active() -> bool {
+pub struct ForegroundWindowInfo {
+    pub class_name: String,
+    pub process_path: String,
+}
+
+#[cfg(target_os = "windows")]
+pub fn get_foreground_window_info() -> Option<ForegroundWindowInfo> {
     use std::ffi::c_void;
     unsafe {
         #[link(name = "user32")]
@@ -150,55 +237,167 @@ pub fn is_screenshot_tool_active() -> bool {
 
         let hwnd = GetForegroundWindow();
         if hwnd.is_null() {
-            return false;
+            return None;
         }
 
-        // Fast check: window class name
         let mut class_buf = [0u16; 256];
         let class_len = GetClassNameW(hwnd, class_buf.as_mut_ptr(), 256);
-        if class_len > 0 {
-            let class_str = String::from_utf16_lossy(&class_buf[..class_len as usize]).to_lowercase();
-            if class_str.contains("screenclippinghost")
-                || class_str.contains("snippingtool")
-                || class_str.contains("snipper")
-            {
-                return true;
-            }
-        }
+        let class_name = if class_len > 0 {
+            String::from_utf16_lossy(&class_buf[..class_len as usize])
+        } else {
+            String::new()
+        };
 
-        // Check process executable name
         let mut pid: u32 = 0;
         GetWindowThreadProcessId(hwnd, &mut pid);
+        let mut process_path = String::new();
         if pid != 0 {
-            // PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
             let h_proc = OpenProcess(0x1000, 0, pid);
             if !h_proc.is_null() {
                 let mut path_buf = [0u16; 1024];
                 let mut size: u32 = 1024;
                 if QueryFullProcessImageNameW(h_proc, 0, path_buf.as_mut_ptr(), &mut size) != 0 {
-                    let exe_path = String::from_utf16_lossy(&path_buf[..size as usize]).to_lowercase();
-                    CloseHandle(h_proc);
-                    if exe_path.ends_with("screenclippinghost.exe")
-                        || exe_path.ends_with("snippingtool.exe")
-                        || exe_path.ends_with("snippingtoolapp.exe")
-                        || exe_path.ends_with("lightshot.exe")
-                        || exe_path.ends_with("greenshot.exe")
-                        || exe_path.ends_with("sharex.exe")
-                    {
-                        return true;
-                    }
-                } else {
-                    CloseHandle(h_proc);
+                    process_path = String::from_utf16_lossy(&path_buf[..size as usize]);
                 }
+                CloseHandle(h_proc);
             }
         }
 
+        Some(ForegroundWindowInfo {
+            class_name,
+            process_path,
+        })
+    }
+}
+
+#[cfg(target_os = "windows")]
+pub fn is_screenshot_tool_active() -> bool {
+    if let Some(info) = get_foreground_window_info() {
+        if is_screenshot_class_name(&info.class_name) || is_screenshot_exe_name(&info.process_path) {
+            return true;
+        }
+    }
+    false
+}
+
+#[cfg(target_os = "windows")]
+pub fn is_terminal_window_active() -> bool {
+    if let Some(info) = get_foreground_window_info() {
+        if is_terminal_class_name(&info.class_name) || is_terminal_exe_name(&info.process_path) {
+            return true;
+        }
+    }
+    false
+}
+
+#[cfg(target_os = "macos")]
+fn get_macos_frontmost_app_info() -> Option<(String, String)> {
+    use std::ffi::{c_char, c_void, CStr};
+    unsafe {
+        #[link(name = "objc")]
+        unsafe extern "C" {
+            fn objc_getClass(name: *const c_char) -> *mut c_void;
+            fn sel_registerName(name: *const c_char) -> *mut c_void;
+            fn objc_msgSend(receiver: *mut c_void, op: *mut c_void, ...) -> *mut c_void;
+        }
+
+        let cls_ws = objc_getClass(b"NSWorkspace\0".as_ptr() as *const c_char);
+        if cls_ws.is_null() {
+            return None;
+        }
+        let sel_shared = sel_registerName(b"sharedWorkspace\0".as_ptr() as *const c_char);
+        let ws = objc_msgSend(cls_ws, sel_shared);
+        if ws.is_null() {
+            return None;
+        }
+        let sel_front = sel_registerName(b"frontmostApplication\0".as_ptr() as *const c_char);
+        let app = objc_msgSend(ws, sel_front);
+        if app.is_null() {
+            return None;
+        }
+
+        let sel_utf8 = sel_registerName(b"UTF8String\0".as_ptr() as *const c_char);
+        let utf8_fn: unsafe extern "C" fn(*mut c_void, *mut c_void) -> *const c_char =
+            std::mem::transmute(objc_msgSend as *const ());
+
+        let sel_bundle = sel_registerName(b"bundleIdentifier\0".as_ptr() as *const c_char);
+        let bundle_id_obj = objc_msgSend(app, sel_bundle);
+        let bundle_id = if !bundle_id_obj.is_null() {
+            let ptr = utf8_fn(bundle_id_obj, sel_utf8);
+            if !ptr.is_null() {
+                CStr::from_ptr(ptr).to_string_lossy().to_string()
+            } else {
+                String::new()
+            }
+        } else {
+            String::new()
+        };
+
+        let sel_name = sel_registerName(b"localizedName\0".as_ptr() as *const c_char);
+        let name_obj = objc_msgSend(app, sel_name);
+        let localized_name = if !name_obj.is_null() {
+            let ptr = utf8_fn(name_obj, sel_utf8);
+            if !ptr.is_null() {
+                CStr::from_ptr(ptr).to_string_lossy().to_string()
+            } else {
+                String::new()
+            }
+        } else {
+            String::new()
+        };
+
+        Some((bundle_id, localized_name))
+    }
+}
+
+#[cfg(target_os = "macos")]
+pub fn is_screenshot_tool_active() -> bool {
+    if let Some((bundle_id, name)) = get_macos_frontmost_app_info() {
+        let b = bundle_id.to_lowercase();
+        let n = name.to_lowercase();
+        b.contains("screencapture")
+            || b.contains("snip")
+            || b.contains("shottr")
+            || b.contains("cleanshot")
+            || n.contains("screenshot")
+            || n.contains("screencapture")
+    } else {
         false
     }
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "macos")]
+pub fn is_terminal_window_active() -> bool {
+    if let Some((bundle_id, name)) = get_macos_frontmost_app_info() {
+        let b = bundle_id.to_lowercase();
+        let n = name.to_lowercase();
+        b.contains("terminal")
+            || b.contains("iterm")
+            || b.contains("kitty")
+            || b.contains("alacritty")
+            || b.contains("hyper")
+            || b.contains("tabby")
+            || b.contains("warp")
+            || b.contains("ghostty")
+            || b.contains("wezterm")
+            || n == "terminal"
+            || n == "iterm2"
+            || n == "kitty"
+            || n == "alacritty"
+            || n == "ghostty"
+            || n == "wezterm"
+    } else {
+        false
+    }
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
 pub fn is_screenshot_tool_active() -> bool {
+    false
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+pub fn is_terminal_window_active() -> bool {
     false
 }
 
@@ -308,5 +507,43 @@ mod tests {
 
         // Restore original clipboard
         let _ = restore_clipboard(original_backup);
+    }
+
+    #[test]
+    fn test_is_terminal_class_and_exe() {
+        assert!(is_terminal_class_name("CASCADIA_HOSTING_WINDOW_CLASS"));
+        assert!(is_terminal_class_name("ConsoleWindowClass"));
+        assert!(is_terminal_class_name("mintty"));
+        assert!(is_terminal_class_name("VirtualConsoleClass"));
+        assert!(is_terminal_class_name("PuTTY"));
+        assert!(is_terminal_class_name("Alacritty"));
+        assert!(is_terminal_class_name("org.wezfurlong.wezterm"));
+        assert!(!is_terminal_class_name("Chrome_WidgetWin_1"));
+        assert!(!is_terminal_class_name("Notepad"));
+
+        assert!(is_terminal_exe_name(r"C:\Program Files\WindowsApps\Microsoft.WindowsTerminal_8wekyb3d8bbwe\WindowsTerminal.exe"));
+        assert!(is_terminal_exe_name(r"C:\Windows\System32\cmd.exe"));
+        assert!(is_terminal_exe_name(r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"));
+        assert!(is_terminal_exe_name(r"C:\Program Files\PowerShell\7\pwsh.exe"));
+        assert!(is_terminal_exe_name(r"C:\Program Files\Git\usr\bin\mintty.exe"));
+        assert!(is_terminal_exe_name(r"C:\Users\User\AppData\Local\Programs\hyper\Hyper.exe"));
+        assert!(is_terminal_exe_name(r"C:\Users\User\AppData\Local\Programs\Alacritty\alacritty.exe"));
+        assert!(is_terminal_exe_name(r"C:\Program Files\WezTerm\wezterm-gui.exe"));
+        assert!(is_terminal_exe_name(r"C:\Program Files\Warp\warp.exe"));
+        assert!(!is_terminal_exe_name(r"C:\Program Files\Google\Chrome\Application\chrome.exe"));
+        assert!(!is_terminal_exe_name(r"C:\Windows\System32\notepad.exe"));
+        assert!(!is_terminal_exe_name(r"C:\Users\User\AppData\Local\Programs\Microsoft VS Code\Code.exe"));
+    }
+
+    #[test]
+    fn test_is_screenshot_class_and_exe() {
+        assert!(is_screenshot_class_name("ScreenClippingHost"));
+        assert!(is_screenshot_class_name("SnippingTool"));
+        assert!(!is_screenshot_class_name("Notepad"));
+
+        assert!(is_screenshot_exe_name(r"C:\Windows\System32\SnippingTool.exe"));
+        assert!(is_screenshot_exe_name(r"C:\Program Files\Lightshot\Lightshot.exe"));
+        assert!(is_screenshot_exe_name(r"C:\Program Files\ShareX\ShareX.exe"));
+        assert!(!is_screenshot_exe_name(r"C:\Windows\System32\notepad.exe"));
     }
 }

@@ -1,7 +1,7 @@
 use crate::clipboard::{
     backup_clipboard, get_clipboard_sequence, get_clipboard_text, has_clipboard_image,
-    is_screenshot_tool_active, restore_clipboard, set_clipboard_text, simulate_copy,
-    ClipboardBackup,
+    is_screenshot_tool_active, is_terminal_window_active, restore_clipboard, set_clipboard_text,
+    simulate_copy, ClipboardBackup,
 };
 use crate::models::{AppSettings, TriggerEventPayload};
 use rdev::{listen, Button, Event, EventType};
@@ -71,6 +71,9 @@ pub fn start_global_listener(app: AppHandle, settings: Arc<Mutex<AppSettings>>) 
             };
 
             if should_trigger {
+                if is_terminal_window_active() {
+                    continue;
+                }
                 pause_triggered.store(true, Ordering::Relaxed);
                 let (x, y) = *mouse_pos.lock().unwrap();
                 show_widget_at(&app, x, y, "pause", String::new());
@@ -183,8 +186,8 @@ pub fn start_global_listener(app: AppHandle, settings: Arc<Mutex<AppSettings>>) 
                             }
                         }
 
-                        // If user is currently dragging inside Snipping Tool or screenshot utility, ignore completely
-                        if is_screenshot_tool_active() {
+                        // If user is currently dragging inside Snipping Tool, screenshot utility, or terminal, ignore completely
+                        if is_screenshot_tool_active() || is_terminal_window_active() {
                             return;
                         }
 
@@ -193,8 +196,8 @@ pub fn start_global_listener(app: AppHandle, settings: Arc<Mutex<AppSettings>>) 
                             // Micro sleep for host app to finish drawing selection highlight
                             thread::sleep(Duration::from_millis(70));
 
-                            // If screenshot tool became active, do not touch clipboard
-                            if is_screenshot_tool_active() {
+                            // If screenshot tool or terminal became active, do not touch clipboard or send Ctrl+C!
+                            if is_screenshot_tool_active() || is_terminal_window_active() {
                                 return;
                             }
 
