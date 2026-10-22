@@ -4,7 +4,7 @@ use crate::clipboard::{
     simulate_copy, ClipboardBackup,
 };
 use crate::models::{AppSettings, TriggerEventPayload};
-use rdev::{listen, Button, Event, EventType};
+use rdev::{listen, Button, Event, EventType, Key};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -12,6 +12,25 @@ use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, Position, Size};
 
 static LAST_WIDGET_SHOW: Mutex<Option<Instant>> = Mutex::new(None);
+
+/// Bit flag for each modifier key (Win/Cmd/Super, Ctrl, Alt/Option, Shift) across
+/// Windows, macOS and Linux. Bitmask is robust against key auto-repeat.
+fn modifier_bit(key: Key) -> u8 {
+    match key {
+        Key::MetaLeft => 1 << 0,
+        Key::MetaRight => 1 << 1,
+        Key::ControlLeft => 1 << 2,
+        Key::ControlRight => 1 << 3,
+        Key::Alt => 1 << 4,
+        Key::AltGr => 1 << 5,
+        Key::ShiftLeft => 1 << 6,
+        Key::ShiftRight => 1 << 7,
+        _ => 0,
+    }
+}
+
+/// Shift alone is normal typing (capital letters), so only these count as "shortcut" modifiers.
+const SHORTCUT_MODIFIERS: u8 = 0b0011_1111;
 
 pub struct ListenerState {
     pub enabled: AtomicBool,
@@ -71,7 +90,7 @@ pub fn start_global_listener(app: AppHandle, settings: Arc<Mutex<AppSettings>>) 
             };
 
             if should_trigger {
-                if is_terminal_window_active() {
+                if is_terminal_window_active() || is_screenshot_tool_active() {
                     continue;
                 }
                 pause_triggered.store(true, Ordering::Relaxed);
@@ -82,6 +101,7 @@ pub fn start_global_listener(app: AppHandle, settings: Arc<Mutex<AppSettings>>) 
     }
 
     // Spawn rdev event listener thread
+    let held_modifiers = Arc::new(std::sync::atomic::AtomicU8::new(0));
     thread::spawn(move || {
         let callback = move |event: Event| {
             if !state.enabled.load(Ordering::Relaxed) {
@@ -241,10 +261,29 @@ pub fn start_global_listener(app: AppHandle, settings: Arc<Mutex<AppSettings>>) 
                         });
                     }
                 }
-                EventType::KeyPress(_) => {
+                EventType::KeyPress(key) => {
+                    let bit = modifier_bit(key);
+                    if bit != 0 {
+                        // Track held modifiers; never count them as "typing"
+                        held_modifiers.fetch_or(bit, Ordering::Relaxed);
+                        return;
+                    }
+                    if held_modifiers.load(Ordering::Relaxed) & SHORTCUT_MODIFIERS != 0 {
+                        // Keyboard shortcut (e.g. Win+Shift+S, Cmd+Shift+4, Ctrl+C):
+                        // cancel any pending pause trigger so we never steal focus
+                        // from screenshot overlays or other system UI.
+                        *last_typing_time.lock().unwrap() = None;
+                        return;
+                    }
                     let mut t = last_typing_time.lock().unwrap();
                     *t = Some(Instant::now());
                     pause_triggered.store(false, Ordering::Relaxed);
+                }
+                EventType::KeyRelease(key) => {
+                    let bit = modifier_bit(key);
+                    if bit != 0 {
+                        held_modifiers.fetch_and(!bit, Ordering::Relaxed);
+                    }
                 }
                 _ => {}
             }

@@ -207,6 +207,13 @@ pub fn is_screenshot_exe_name(path: &str) -> bool {
         "greenshot.exe",
         "sharex.exe",
         "flameshot.exe",
+        "flameshot",
+        "gnome-screenshot",
+        "spectacle",
+        "ksnip",
+        "shutter",
+        "screencaptureui",
+        "screenshot",
     ];
 
     SCREENSHOT_EXES.iter().any(|&s| filename.eq_ignore_ascii_case(s))
@@ -393,6 +400,18 @@ pub fn is_terminal_window_active() -> bool {
 
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]
 pub fn is_screenshot_tool_active() -> bool {
+    // Linux/BSD: no portable foreground-window API (X11 vs Wayland), so check
+    // whether a known screenshot/snipping process is currently running.
+    if let Ok(entries) = std::fs::read_dir("/proc") {
+        for entry in entries.flatten() {
+            let comm_path = entry.path().join("comm");
+            if let Ok(comm) = std::fs::read_to_string(comm_path) {
+                if is_screenshot_exe_name(comm.trim()) {
+                    return true;
+                }
+            }
+        }
+    }
     false
 }
 

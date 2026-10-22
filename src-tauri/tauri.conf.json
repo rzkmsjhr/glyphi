@@ -33,6 +33,7 @@
         "alwaysOnTop": true,
         "skipTaskbar": true,
         "visible": false,
+        "focus": false,
         "url": "index.html?window=floating",
         "devtools": true
       }
