@@ -195,7 +195,15 @@ fn exit_app(app: AppHandle) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Register state BEFORE any webview loads, so early frontend `invoke` calls
+    // (e.g. get_settings) never hit "state not managed". Real settings load in setup().
+    let settings_arc = Arc::new(Mutex::new(AppSettings::default()));
+
     tauri::Builder::default()
+        .manage(AppState {
+            settings: settings_arc.clone(),
+            ai: AiService::new(),
+        })
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -209,10 +217,10 @@ pub fn run() {
                 }
             }
         })
-        .setup(|app| {
+        .setup(move |app| {
             let handle = app.handle().clone();
             let initial_settings = load_settings(&handle);
-            let settings_arc = Arc::new(Mutex::new(initial_settings.clone()));
+            *settings_arc.lock().unwrap() = initial_settings.clone();
 
             // Synchronize system autostart state with initial settings
             let autolaunch = app.autolaunch();
@@ -278,11 +286,6 @@ pub fn run() {
                     }
                 }
             }
-
-            app.manage(AppState {
-                settings: settings_arc.clone(),
-                ai: AiService::new(),
-            });
 
             // Start global mouse / keyboard pause listener
             start_global_listener(handle.clone(), settings_arc.clone());
