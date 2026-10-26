@@ -43,8 +43,6 @@ pub fn start_global_listener(app: AppHandle, settings: Arc<Mutex<AppSettings>>) 
 
     let mouse_pos = Arc::new(Mutex::new((0.0f64, 0.0f64)));
     let mouse_down_pos = Arc::new(Mutex::new((0.0f64, 0.0f64)));
-    let last_click_time = Arc::new(Mutex::new(None::<Instant>));
-    let last_click_pos = Arc::new(Mutex::new((0.0f64, 0.0f64)));
     let last_typing_time = Arc::new(Mutex::new(None::<Instant>));
     let pause_triggered = Arc::new(AtomicBool::new(false));
 
@@ -172,23 +170,12 @@ pub fn start_global_listener(app: AppHandle, settings: Arc<Mutex<AppSettings>>) 
                     let dy = cur_y - down_y;
                     let distance_sq = dx * dx + dy * dy;
 
-                    let now = Instant::now();
-                    let is_double_click = {
-                        let last_time = *last_click_time.lock().unwrap();
-                        let (lx, ly) = *last_click_pos.lock().unwrap();
-                        let dist_to_prev = (cur_x - lx).powi(2) + (cur_y - ly).powi(2);
-                        if let Some(t) = last_time {
-                            t.elapsed() < Duration::from_millis(450) && dist_to_prev < 49.0
-                        } else {
-                            false
-                        }
-                    };
-                    *last_click_time.lock().unwrap() = Some(now);
-                    *last_click_pos.lock().unwrap() = (cur_x, cur_y);
-
+                    // Only a click-and-drag (text highlight) spawns the widget.
+                    // Double-clicks are ignored: without copying we can't tell a word
+                    // selection apart from opening files, folders, links, etc.
                     let is_drag_selection = distance_sq > 25.0;
 
-                    if is_drag_selection || is_double_click {
+                    if is_drag_selection {
                         // Check if cursor is inside our own floating window; if so, ignore
                         if let Some(win) = app.get_webview_window("floating") {
                             if win.is_visible().unwrap_or(false) {
