@@ -5,10 +5,7 @@ mod listener;
 mod models;
 
 use ai::AiService;
-use clipboard::{
-    get_clipboard_text, is_terminal_window_active, set_clipboard_text, simulate_copy,
-    simulate_paste,
-};
+use clipboard::{capture_selection, restore_foreground_app, set_clipboard_text, simulate_paste};
 use config::{load_settings, reset_settings as persist_reset_settings, save_settings as persist_settings};
 use listener::{show_widget_at, start_global_listener};
 use models::{AppSettings, ProcessTextRequest, ProcessTextResponse};
@@ -102,6 +99,7 @@ fn apply_replacement(app: AppHandle, new_text: String) -> Result<(), String> {
         let _ = window.hide();
     }
     // Give OS time to reactivate target window
+    restore_foreground_app();
     std::thread::sleep(std::time::Duration::from_millis(120));
     simulate_paste(&new_text)
 }
@@ -112,12 +110,11 @@ fn copy_to_clipboard(text: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn grab_selected_text() -> Result<String, String> {
-    if is_terminal_window_active() {
-        get_clipboard_text()
-    } else {
-        simulate_copy()
-    }
+async fn grab_selected_text() -> Result<String, String> {
+    // Only called when the user clicks Grammar / Translate / Polish
+    tauri::async_runtime::spawn_blocking(capture_selection)
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -300,12 +297,8 @@ pub fn run() {
                             if s == &shortcut && event.state() == ShortcutState::Pressed {
                                 let app = handle_clone.clone();
                                 std::thread::spawn(move || {
-                                    let text = if is_terminal_window_active() {
-                                        get_clipboard_text().unwrap_or_default()
-                                    } else {
-                                        simulate_copy().unwrap_or_default()
-                                    };
-                                    show_widget_at(&app, 400.0, 300.0, "shortcut", text);
+                                    // Only show the widget; copying happens on button click
+                                    show_widget_at(&app, 400.0, 300.0, "shortcut", String::new());
                                 });
                             }
                         })

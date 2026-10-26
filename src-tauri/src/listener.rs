@@ -1,7 +1,5 @@
 use crate::clipboard::{
-    backup_clipboard, get_clipboard_sequence, get_clipboard_text, has_clipboard_image,
-    is_screenshot_tool_active, is_terminal_window_active, restore_clipboard, set_clipboard_text,
-    simulate_copy, ClipboardBackup,
+    is_screenshot_tool_active, is_terminal_window_active, remember_foreground_app,
 };
 use crate::models::{AppSettings, TriggerEventPayload};
 use rdev::{listen, Button, Event, EventType, Key};
@@ -206,58 +204,15 @@ pub fn start_global_listener(app: AppHandle, settings: Arc<Mutex<AppSettings>>) 
                             }
                         }
 
-                        // If user is currently dragging inside Snipping Tool, screenshot utility, or terminal, ignore completely
-                        if is_screenshot_tool_active() || is_terminal_window_active() {
-                            return;
-                        }
-
                         let app_clone = app.clone();
                         thread::spawn(move || {
-                            // Micro sleep for host app to finish drawing selection highlight
-                            thread::sleep(Duration::from_millis(70));
-
-                            // If screenshot tool or terminal became active, do not touch clipboard or send Ctrl+C!
-                            if is_screenshot_tool_active() || is_terminal_window_active() {
+                            // Never pop up over screenshot / snipping overlays
+                            if is_screenshot_tool_active() {
                                 return;
                             }
-
-                            // Capture a full snapshot of whatever is on the clipboard (image, text, or empty)
-                            let backup = backup_clipboard().unwrap_or(ClipboardBackup::Empty);
-                            let had_image = matches!(backup, ClipboardBackup::Image { .. }) || has_clipboard_image();
-                            let seq_before = get_clipboard_sequence();
-
-                            // Non-destructive check:
-                            // If sequence tracking is available OR clipboard contains an image,
-                            // DO NOT call set_clipboard_text("")!
-                            // Wiping the clipboard was what erased Snipping Tool / Print Screen images!
-                            if !had_image && seq_before == 0 {
-                                let _ = set_clipboard_text("");
-                                thread::sleep(Duration::from_millis(15));
-                            }
-
-                            // Simulate Ctrl+C / Cmd+C while target app still holds foreground focus
-                            let _ = simulate_copy();
-                            thread::sleep(Duration::from_millis(60));
-
-                            let seq_after = get_clipboard_sequence();
-                            let selected = get_clipboard_text().unwrap_or_default();
-                            let trimmed = selected.trim();
-
-                            let text_was_copied = if seq_before > 0 && seq_after > 0 {
-                                seq_after != seq_before && !trimmed.is_empty()
-                            } else {
-                                match &backup {
-                                    ClipboardBackup::Text(prev) => !trimmed.is_empty() && trimmed != prev.trim(),
-                                    _ => !trimmed.is_empty(),
-                                }
-                            };
-
-                            if text_was_copied {
-                                show_widget_at(&app_clone, cur_x, cur_y, "selection", selected);
-                            } else {
-                                // Restore previous clipboard if nothing was highlighted so image/screenshot is preserved!
-                                let _ = restore_clipboard(backup);
-                            }
+                            // Only SHOW the widget. No keys are sent and the clipboard is untouched;
+                            // the selection is copied only when the user clicks an action button.
+                            show_widget_at(&app_clone, cur_x, cur_y, "selection", String::new());
                         });
                     }
                 }
@@ -296,6 +251,8 @@ pub fn start_global_listener(app: AppHandle, settings: Arc<Mutex<AppSettings>>) 
 }
 
 pub fn show_widget_at(app: &AppHandle, x: f64, y: f64, trigger_type: &str, text: String) {
+    // Remember which app the user was in, so the action buttons can copy from it later
+    remember_foreground_app();
     if let Some(window) = app.get_webview_window("floating") {
         // Query monitor geometry for screen boundary clamping
         let (monitor_x, monitor_y, monitor_w, monitor_h, scale_factor) =

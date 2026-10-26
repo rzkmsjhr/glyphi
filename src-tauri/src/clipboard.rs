@@ -24,12 +24,202 @@ pub fn get_clipboard_text() -> Result<String, String> {
     clipboard.get_text().map_err(|e| format!("Clipboard get text error: {}", e))
 }
 
+// ---------------------------------------------------------------------------
+// Remember / restore the app the user was working in before the widget appeared.
+// The widget is shown WITHOUT sending any keys; we only copy on button click.
+// ---------------------------------------------------------------------------
+
+/// Windows: HWND, macOS: PID of the frontmost app, Linux: unused.
+static PREV_FOREGROUND: Mutex<Option<usize>> = Mutex::new(None);
+
+#[cfg(target_os = "windows")]
+mod win_focus {
+    use std::ffi::c_void;
+    #[link(name = "user32")]
+    unsafe extern "system" {
+        pub fn GetForegroundWindow() -> *mut c_void;
+        pub fn SetForegroundWindow(hwnd: *mut c_void) -> i32;
+        pub fn IsWindow(hwnd: *mut c_void) -> i32;
+        pub fn GetWindowThreadProcessId(hwnd: *mut c_void, pid: *mut u32) -> u32;
+    }
+}
+
+#[cfg(target_os = "macos")]
+mod mac_focus {
+    use std::ffi::{c_char, c_void};
+    #[link(name = "objc")]
+    unsafe extern "C" {
+        pub fn objc_getClass(name: *const c_char) -> *mut c_void;
+        pub fn sel_registerName(name: *const c_char) -> *mut c_void;
+        pub fn objc_msgSend();
+    }
+    #[link(name = "AppKit", kind = "framework")]
+    unsafe extern "C" {}
+
+    pub unsafe fn sel(name: &[u8]) -> *mut c_void {
+        unsafe { sel_registerName(name.as_ptr() as *const c_char) }
+    }
+    pub unsafe fn cls(name: &[u8]) -> *mut c_void {
+        unsafe { objc_getClass(name.as_ptr() as *const c_char) }
+    }
+    pub unsafe fn send0(obj: *mut c_void, s: *mut c_void) -> *mut c_void {
+        let f: unsafe extern "C" fn(*mut c_void, *mut c_void) -> *mut c_void =
+            unsafe { std::mem::transmute(objc_msgSend as *const ()) };
+        unsafe { f(obj, s) }
+    }
+
+    pub fn frontmost_pid() -> Option<i32> {
+        unsafe {
+            let ws_cls = cls(b"NSWorkspace\0");
+            if ws_cls.is_null() {
+                return None;
+            }
+            let ws = send0(ws_cls, sel(b"sharedWorkspace\0"));
+            if ws.is_null() {
+                return None;
+            }
+            let app = send0(ws, sel(b"frontmostApplication\0"));
+            if app.is_null() {
+                return None;
+            }
+            let f: unsafe extern "C" fn(*mut c_void, *mut c_void) -> i32 =
+                std::mem::transmute(objc_msgSend as *const ());
+            Some(f(app, sel(b"processIdentifier\0")))
+        }
+    }
+
+    pub fn activate_pid(pid: i32) -> bool {
+        unsafe {
+            let ra_cls = cls(b"NSRunningApplication\0");
+            if ra_cls.is_null() {
+                return false;
+            }
+            let by_pid: unsafe extern "C" fn(*mut c_void, *mut c_void, i32) -> *mut c_void =
+                std::mem::transmute(objc_msgSend as *const ());
+            let app = by_pid(ra_cls, sel(b"runningApplicationWithProcessIdentifier:\0"), pid);
+            if app.is_null() {
+                return false;
+            }
+            // NSApplicationActivateIgnoringOtherApps = 1 << 1
+            let activate: unsafe extern "C" fn(*mut c_void, *mut c_void, usize) -> bool =
+                std::mem::transmute(objc_msgSend as *const ());
+            activate(app, sel(b"activateWithOptions:\0"), 2)
+        }
+    }
+}
+
+/// Call right before showing the widget: remembers the app the user is working in.
+pub fn remember_foreground_app() {
+    #[cfg(target_os = "windows")]
+    unsafe {
+        let hwnd = win_focus::GetForegroundWindow();
+        if hwnd.is_null() {
+            return;
+        }
+        let mut pid = 0u32;
+        win_focus::GetWindowThreadProcessId(hwnd, &mut pid);
+        if pid != std::process::id() {
+            *PREV_FOREGROUND.lock().unwrap() = Some(hwnd as usize);
+        }
+    }
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(pid) = mac_focus::frontmost_pid() {
+            if pid as u32 != std::process::id() {
+                *PREV_FOREGROUND.lock().unwrap() = Some(pid as usize);
+            }
+        }
+    }
+}
+
+/// Bring the remembered app back to the front. Returns true if focus was restored.
+pub fn restore_foreground_app() -> bool {
+    let prev = *PREV_FOREGROUND.lock().unwrap();
+    let Some(_prev) = prev else { return false };
+    #[cfg(target_os = "windows")]
+    unsafe {
+        let hwnd = _prev as *mut std::ffi::c_void;
+        if win_focus::IsWindow(hwnd) == 0 {
+            return false;
+        }
+        if win_focus::GetForegroundWindow() == hwnd {
+            return true;
+        }
+        return win_focus::SetForegroundWindow(hwnd) != 0;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        return mac_focus::activate_pid(_prev as i32);
+    }
+    #[allow(unreachable_code)]
+    false
+}
+
+/// Linux/BSD: highlighted text is available in the PRIMARY selection without any key press.
+#[cfg(all(unix, not(target_os = "macos")))]
+fn get_primary_selection() -> Option<String> {
+    use arboard::{GetExtLinux, LinuxClipboardKind};
+    let _guard = CLIPBOARD_LOCK.lock().ok()?;
+    let mut clipboard = Clipboard::new().ok()?;
+    clipboard
+        .get()
+        .clipboard(LinuxClipboardKind::Primary)
+        .text()
+        .ok()
+        .filter(|t| !t.trim().is_empty())
+}
+
+/// Read the user's current selection. This is the ONLY place a copy shortcut is sent,
+/// and it is only called when the user clicks Grammar / Translate / Polish.
+/// The user's original clipboard is restored afterwards.
+pub fn capture_selection() -> Result<String, String> {
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        if let Some(text) = get_primary_selection() {
+            return Ok(text);
+        }
+    }
+
+    // Return focus to the app that holds the selection, so the copy goes there (not our widget)
+    let restored = restore_foreground_app();
+    thread::sleep(Duration::from_millis(if restored { 150 } else { 30 }));
+
+    // Never send Ctrl+C into a terminal (it is SIGINT there); use whatever is on the clipboard
+    if is_terminal_window_active() {
+        return get_clipboard_text();
+    }
+
+    let backup = backup_clipboard().unwrap_or(ClipboardBackup::Empty);
+    let seq_before = get_clipboard_sequence();
+
+    let _ = simulate_copy();
+    thread::sleep(Duration::from_millis(60));
+
+    let seq_after = get_clipboard_sequence();
+    let text = get_clipboard_text().unwrap_or_default();
+
+    let copied = if seq_before > 0 && seq_after > 0 {
+        seq_after != seq_before && !text.trim().is_empty()
+    } else {
+        match &backup {
+            ClipboardBackup::Text(prev) => !text.trim().is_empty() && text.trim() != prev.trim(),
+            _ => !text.trim().is_empty(),
+        }
+    };
+
+    // Put the user's original clipboard (text or screenshot image) back
+    let _ = restore_clipboard(backup);
+
+    if copied { Ok(text) } else { Ok(String::new()) }
+}
+
 pub fn set_clipboard_text(text: &str) -> Result<(), String> {
     let _guard = CLIPBOARD_LOCK.lock().map_err(|e| e.to_string())?;
     let mut clipboard = Clipboard::new().map_err(|e| format!("Clipboard error: {}", e))?;
     clipboard.set_text(text.to_string()).map_err(|e| format!("Clipboard set text error: {}", e))
 }
 
+#[allow(dead_code)]
 pub fn has_clipboard_image() -> bool {
     let _guard = match CLIPBOARD_LOCK.lock() {
         Ok(g) => g,
